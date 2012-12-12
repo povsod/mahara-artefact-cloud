@@ -38,26 +38,20 @@ require_once('lib.php');
 $action = param_alpha('action', 'info');
 
 switch ($action) {
-	case 'login':
-		PluginBlocktypeZotero::request_token();
-		break;
-	case 'logout':
-		PluginBlocktypeZotero::revoke_access();
-		PluginBlocktypeZotero::delete_token();
-		redirect(get_config('wwwroot').'artefact/cloud');
-		break;
-	case 'test':
-		//PluginBlocktypeZotero::test();
-		//$test = PluginBlocktypeZotero::get_filelist('II7IVJ23');
-		$test = PluginBlocktypeZotero::get_folder_content('0', '10100');
-		log_debug($test);
-		break;
-	default:
-		$account = PluginBlocktypeZotero::account_info();
-		$smarty = smarty();
-		//$smarty->assign('PAGEHEADING', TITLE);
-		$smarty->assign('account', $account);
-		$smarty->display('artefact:cloud:account.tpl');
+    case 'login':
+        PluginBlocktypeZotero::request_token();
+        break;
+    case 'logout':
+        PluginBlocktypeZotero::revoke_access();
+        PluginBlocktypeZotero::delete_token();
+        redirect(get_config('wwwroot').'artefact/cloud');
+        break;
+    default:
+        $account = PluginBlocktypeZotero::account_info();
+        $smarty = smarty();
+        //$smarty->assign('PAGEHEADING', TITLE);
+        $smarty->assign('account', $account);
+        $smarty->display('artefact:cloud:account.tpl');
 }
 
 ?>

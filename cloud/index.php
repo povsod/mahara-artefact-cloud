@@ -40,8 +40,8 @@ global $USER;
 $data = array();
 $clouds = ArtefactTypeCloud::get_user_services($USER->get('id'));
 foreach ($clouds as $cloud) {
-	require_once('blocktype/' . $cloud->title . '/lib.php');
-	$data[] = call_static_method(generate_class_name('blocktype', $cloud->title), 'service_list');
+    require_once('blocktype/' . $cloud->title . '/lib.php');
+    $data[] = call_static_method(generate_class_name('blocktype', $cloud->title), 'service_list');
 }
 
 $smarty = smarty();

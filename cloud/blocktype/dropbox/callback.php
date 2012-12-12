@@ -34,7 +34,7 @@ require_once(get_config('docroot') . 'blocktype/lib.php');
 require_once(get_config('docroot') . 'artefact/cloud/lib.php');
 require_once('lib.php');
 
-global $USER;
+global $USER, $SESSION;
 //$user_id     = param_integer('uid', 0);
 $oauth_token = param_alphanum('oauth_token', null);
 
@@ -44,10 +44,10 @@ $token = ArtefactTypeCloud::get_user_preferences('dropbox', $USER->get('id'));
 $token = array_merge($token, array('oauth_verifier' => null));
 
 if (isset($oauth_token) && $oauth_token == $token['oauth_token']) {
-	PluginBlocktypeDropbox::access_token($token);
-	$SESSION->add_ok_msg(get_string('accesstokensaved', 'blocktype.cloud/dropbox'));
+    PluginBlocktypeDropbox::access_token($token);
+    $SESSION->add_ok_msg(get_string('accesstokensaved', 'blocktype.cloud/dropbox'));
 } else {
-	$SESSION->add_error_msg(get_string('accesstokensavefailed', 'blocktype.cloud/dropbox'));
+    $SESSION->add_error_msg(get_string('accesstokensavefailed', 'blocktype.cloud/dropbox'));
 }
 
 redirect(get_config('wwwroot').'artefact/cloud');

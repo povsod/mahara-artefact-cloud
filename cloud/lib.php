@@ -31,7 +31,7 @@ class PluginArtefactCloud extends Plugin {
     
     public static function get_artefact_types() {
         return array(
-			'cloud'
+            'cloud'
         );
     }
     
@@ -49,13 +49,18 @@ class PluginArtefactCloud extends Plugin {
                 'path' => 'content/clouds',
                 'title' => get_string('clouds', 'artefact.cloud'),
                 'url' => 'artefact/cloud/',
-				// Just one more than Files, so the 'Clouds'
-				// tab will show just after 'Files' tab
+                // Just one more than Files, so the 'Clouds'
+                // tab will show just after 'Files' tab
                 'weight' => 31,
             ),
         );
     }
 
+    public static function postinst($prevversion) {
+        // Add blocktype category called 'cloud' if it doesn't exists...
+        ensure_record_exists('blocktype_category', (object)array('name' => 'cloud'), (object)array('name' => 'cloud', 'sort' => 9));
+    }
+    
 }
 
 
@@ -93,73 +98,73 @@ class ArtefactTypeCloud extends ArtefactType {
     public function render_self($options) {
         return array('html' => clean_html($this->description));
     }
-	
-	
-	public function get_enabled_services() {
-		$sql = 'SELECT b.name
-			FROM {blocktype_installed} b 
-			WHERE b.artefactplugin = ? AND b.active = ?
-			ORDER BY b.name ASC';
-		$clouds = get_records_sql_array($sql, array('cloud', true));
-		$enabled = array();
-		foreach ($clouds as $cloud) {
-			$object = new StdClass;
-			$object->title = $cloud->name;
-			$object->description = '';
-			$enabled[$cloud->name] = $object;
-		}
-		return $enabled;
-	}
-	
-	public function get_user_services($userid) {
-		$sql = 'SELECT a.title, a.description
-			FROM {artefact} a 
-			WHERE a.artefacttype = ? AND a.owner = ?
-			ORDER BY a.title ASC';
-		$user_clouds = get_records_sql_assoc($sql, array('cloud', $userid));
-		$enabled_clouds = self::get_enabled_services();
-		if ($user_clouds) {
-			// Enabled clouds, unused by user
-			$diff_clouds = array_diff_key($enabled_clouds, $user_clouds);
-			$merged = array_merge($diff_clouds, $user_clouds);
-			ksort($merged);
-		} else {
-			$merged = $enabled_clouds;
-			ksort($merged);
-		}
-		$return = array();
-		foreach ($merged as $key => $value) {
-			$return[$key] = $value;
-		}
-		return $return;
-	}
+    
+    
+    public function get_enabled_services() {
+        $sql = 'SELECT b.name
+            FROM {blocktype_installed} b 
+            WHERE b.artefactplugin = ? AND b.active = ?
+            ORDER BY b.name ASC';
+        $clouds = get_records_sql_array($sql, array('cloud', true));
+        $enabled = array();
+        foreach ($clouds as $cloud) {
+            $object = new StdClass;
+            $object->title = $cloud->name;
+            $object->description = '';
+            $enabled[$cloud->name] = $object;
+        }
+        return $enabled;
+    }
+    
+    public function get_user_services($userid) {
+        $sql = 'SELECT a.title, a.description
+            FROM {artefact} a 
+            WHERE a.artefacttype = ? AND a.owner = ?
+            ORDER BY a.title ASC';
+        $user_clouds = get_records_sql_assoc($sql, array('cloud', $userid));
+        $enabled_clouds = self::get_enabled_services();
+        if ($user_clouds) {
+            // Enabled clouds, unused by user
+            $diff_clouds = array_diff_key($enabled_clouds, $user_clouds);
+            $merged = array_merge($diff_clouds, $user_clouds);
+            ksort($merged);
+        } else {
+            $merged = $enabled_clouds;
+            ksort($merged);
+        }
+        $return = array();
+        foreach ($merged as $key => $value) {
+            $return[$key] = $value;
+        }
+        return $return;
+    }
 
-	public function get_user_preferences($cloud, $userid) {
-		// Return unserialized field 'description' from table 'artefact'
-		// where artefacttype=cloud, title=$cloud and owner=$userid
-		$prefs = get_field('artefact', 'description', 'artefacttype', 'cloud', 'title', $cloud, 'owner', $userid);
-		return unserialize($prefs);
-	}
+    public function get_user_preferences($cloud, $userid) {
+        // Return unserialized field 'description' from table 'artefact'
+        // where artefacttype=cloud, title=$cloud and owner=$userid
+        $prefs = get_field('artefact', 'description', 'artefacttype', 'cloud', 'title', $cloud, 'owner', $userid);
+        return unserialize($prefs);
+    }
 
-	public function set_user_preferences($cloud, $userid, $values) {
-		$where = array(
-			'artefacttype' => 'cloud',
-			'owner' => $userid,
-			'title' => $cloud,
-		);
-		$dbnow = db_format_timestamp(time());
-		$data = array(
-			'artefacttype' => 'cloud',
-			'owner' => $userid,
-			'title' => $cloud,
-			'description' => serialize($values),
-			'author' => $userid,
-			'ctime' => $dbnow,
-			'mtime' => $dbnow,
-			'atime' => $dbnow
-		);
-		ensure_record_exists('artefact', $where, $data);
-	}
+    public function set_user_preferences($cloud, $userid, $values) {
+        $where = array(
+            'artefacttype' => 'cloud',
+            'owner' => $userid,
+            'title' => $cloud,
+        );
+        $dbnow = db_format_timestamp(time());
+        $data = array(
+            'artefacttype' => 'cloud',
+            'owner' => $userid,
+            'title' => $cloud,
+            'description' => serialize($values),
+            'author' => $userid,
+            'ctime' => $dbnow,
+            'mtime' => $dbnow,
+            'atime' => $dbnow
+        );
+        ensure_record_exists('artefact', $where, $data);
+    }
 
 }
 
@@ -177,66 +182,66 @@ require_once(get_config('docroot') . 'blocktype/lib.php');
 
 abstract class PluginBlocktypeCloud extends PluginBlocktype {
 
-	/*
-	 * Method that returns data about cloud,
-	 * needed in 'index.php' (cloud list).
-	 */
-	public abstract function service_list();
-	
-	/*
-	 * Method for requesting request_token
-	 */
-	public abstract function request_token();
+    /*
+     * Method that returns data about cloud,
+     * needed in 'index.php' (cloud list).
+     */
+    public abstract function service_list();
+    
+    /*
+     * Method for requesting request_token
+     */
+    public abstract function request_token();
 
-	/*
-	 * Method for requesting access_token
-	 */
-	public abstract function access_token($params);
-	
-	/*
-	 * Method for deleting token(s)
-	 */
-	public abstract function delete_token();
-	
-	/*
-	 * Method for programmatical access revoking
-	 */
-	public abstract function revoke_access();
-	
-	/*
-	 * Method for displaying account info
-	 */
-	public abstract function account_info();
+    /*
+     * Method for requesting access_token
+     */
+    public abstract function access_token($params);
+    
+    /*
+     * Method for deleting token(s)
+     */
+    public abstract function delete_token();
+    
+    /*
+     * Method for programmatical access revoking
+     */
+    public abstract function revoke_access();
+    
+    /*
+     * Method for displaying account info
+     */
+    public abstract function account_info();
 
-	/*
-	 * Method for building filelist data for views/pages
-	 */
-	public abstract function get_filelist($folder_id, $selected);
+    /*
+     * Method for building filelist data for views/pages
+     */
+    public abstract function get_filelist($folder_id, $selected);
 
-	/*
-	 * Method for building JSON filelist data for config form
-	 */
-	public abstract function get_folder_content($folder_id, $options, $block, $fullpath);
+    /*
+     * Method for building JSON filelist data for config form
+     */
+    public abstract function get_folder_content($folder_id, $options, $block, $fullpath);
 
-	/*
-	 * Method for getting info about folder (on Cloud Service)
-	 */
-	public abstract function get_folder_info($folder_id);
+    /*
+     * Method for getting info about folder (on Cloud Service)
+     */
+    public abstract function get_folder_info($folder_id);
 
-	/*
-	 * Method for getting info about file (on Cloud Service)
-	 */
-	public abstract function get_file_info($file_id);
+    /*
+     * Method for getting info about file (on Cloud Service)
+     */
+    public abstract function get_file_info($file_id);
 
-	/*
-	 * Method for downloading file (on Cloud Service)
-	 */
-	public abstract function download_file($file_id);
+    /*
+     * Method for downloading file (on Cloud Service)
+     */
+    public abstract function download_file($file_id);
 
-	/*
-	 * Method for embedding file (on Cloud Service)
-	 */
-	public abstract function embed_file($file_id, $options);
+    /*
+     * Method for embedding file (on Cloud Service)
+     */
+    public abstract function embed_file($file_id, $options);
 
 
 }
@@ -249,8 +254,7 @@ abstract class PluginBlocktypeCloud extends PluginBlocktype {
  * @return string float value rounded according to precision with correct suffix
  * @link http://codeaid.net/php/convert-size-in-bytes-to-a-human-readable-format-%28php%29
  */
-function bytes_to_size1024($bytes, $precision=2)
-{
+function bytes_to_size1024($bytes, $precision=2) {
     $unit = array('B','kB','MB','GB','TB','PB','EB');
     return @round($bytes / pow(1024, ($i = floor(log($bytes, 1024)))), $precision).''.$unit[$i];
 }
@@ -262,36 +266,36 @@ function bytes_to_size1024($bytes, $precision=2)
  * @param integer $level       level in the tree (for identation)
  */
 function get_foldertree_options($parent_id=null, $level=0) {
-	global $options;
-	$options = array('0' => array('value' => get_string('home', 'artefact.file'), 'style' => 'padding-left:5px;'));
-	get_foldertree_recursion($parent_id, $level);
-	return $options;
+    global $options;
+    $options = array('0' => array('value' => get_string('home', 'artefact.file'), 'style' => 'padding-left:5px;'));
+    get_foldertree_recursion($parent_id, $level);
+    return $options;
 }
 
 // Helper function, used in above get_foldertree_options function...
 function get_foldertree_recursion($parent_id=null, $level=0) {
-	global $USER, $options;
-	if (is_null($parent_id)) {
+    global $USER, $options;
+    if (is_null($parent_id)) {
         $folders = get_records_sql_array('
             SELECT a.id, a.title, a.parent
             FROM {artefact} a
             WHERE a.artefacttype = ? AND a.owner = ? AND a.parent IS NULL
             ORDER BY a.title', array('folder', $USER->get('id')));
-		} else {
+        } else {
         $folders = get_records_sql_array('
             SELECT a.id, a.title, a.parent
             FROM {artefact} a
             WHERE a.artefacttype = ? AND a.owner = ? AND a.parent = ?
             ORDER BY a.title', array('folder', $USER->get('id'), $parent_id));
-		}
-	if ($folders) {
-	    foreach ($folders as $folder) {
-			$padding = 10 * ($level+1) + 5;
-		    $options[$folder->id] = array('value' => $folder->title, 'style' => 'padding-left:'. $padding .'px;');
-		    // Recursion...
-		    get_foldertree_recursion($folder->id, $level+1);
-		}
-	}
+        }
+    if ($folders) {
+        foreach ($folders as $folder) {
+            $padding = 10 * ($level+1) + 5;
+            $options[$folder->id] = array('value' => $folder->title, 'style' => 'padding-left:'. $padding .'px;');
+            // Recursion...
+            get_foldertree_recursion($folder->id, $level+1);
+        }
+    }
 }
 
 ?>

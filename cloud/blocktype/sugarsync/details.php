@@ -40,23 +40,23 @@ $type   = param_alpha('type', null); // Possible values: file, folder, album?
 $viewid = param_integer('view', 0);
 
 if ($viewid > 0) {
-	$view = new View($viewid);
-	if (!can_view_view($viewid)) {
-		throw new AccessDeniedException();
-	}
+    $view = new View($viewid);
+    if (!can_view_view($viewid)) {
+        throw new AccessDeniedException();
+    }
 }
 
 $data = array();
 if ($type == 'folder') {
-	$data = PluginBlocktypeSugarsync::get_folder_info($id);
+    $data = PluginBlocktypeSugarsync::get_folder_info($id);
 } else {
-	$data = PluginBlocktypeSugarsync::get_file_info($id);
+    $data = PluginBlocktypeSugarsync::get_file_info($id);
 }
 
 if ($viewid > 0) {
-	define('TITLE', $data['name'] . ' ' . get_string('in', 'view') . ' ' . $view->get('title'));
+    define('TITLE', $data['name'] . ' ' . get_string('in', 'view') . ' ' . $view->get('title'));
 } else {
-	define('TITLE', get_string('filedetails', 'artefact.cloud', $data['name']));
+    define('TITLE', get_string('filedetails', 'artefact.cloud', $data['name']));
 }
 
 
@@ -71,19 +71,19 @@ $smarty->assign('id', $id);
 $smarty->assign('type', $type);
 $smarty->assign('viewid', $viewid);
 if ($viewid > 0) {
-	$viewtitle = $view->get('title');
+    $viewtitle = $view->get('title');
 } else {
-	$viewtitle = get_string('filedetails', 'artefact.cloud', $data['name']);
+    $viewtitle = get_string('filedetails', 'artefact.cloud', $data['name']);
 }
 $smarty->assign('viewtitle', $viewtitle);
 $smarty->assign('data', $data);
 
 if ($viewid > 0) {
-	$viewowner = $view->get('owner');
-	if ($viewowner) {
-		$smarty->assign('ownerlink', 'user/view.php?id=' . $viewowner);
-	}
-	$smarty->assign('ownername', $view->formatted_owner());
+    $viewowner = $view->get('owner');
+    if ($viewowner) {
+        $smarty->assign('ownerlink', 'user/view.php?id=' . $viewowner);
+    }
+    $smarty->assign('ownername', $view->formatted_owner());
 }
 
 $smarty->display('blocktype:sugarsync:details.tpl');

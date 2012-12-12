@@ -39,19 +39,19 @@ $action = param_alpha('action', 'info');
 
 
 switch ($action) {
-	case 'login':
-		PluginBlocktypeBox::request_token();
-		break;
-	case 'logout':
-		PluginBlocktypeBox::revoke_access();
-		PluginBlocktypeBox::delete_token();
-		redirect(get_config('wwwroot').'artefact/cloud');
-		break;
-	default:
-		$account = PluginBlocktypeBox::account_info();
-		$smarty = smarty();
-		//$smarty->assign('PAGEHEADING', TITLE);
-		$smarty->assign('account', $account);
-		$smarty->display('artefact:cloud:account.tpl');}
+    case 'login':
+        PluginBlocktypeBox::request_token();
+        break;
+    case 'logout':
+        PluginBlocktypeBox::revoke_access();
+        PluginBlocktypeBox::delete_token();
+        redirect(get_config('wwwroot').'artefact/cloud');
+        break;
+    default:
+        $account = PluginBlocktypeBox::account_info();
+        $smarty = smarty();
+        //$smarty->assign('PAGEHEADING', TITLE);
+        $smarty->assign('account', $account);
+        $smarty->display('artefact:cloud:account.tpl');}
 
 ?>

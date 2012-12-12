@@ -72,7 +72,7 @@ function pieform_element_css_select(Pieform $form, $element) {/*{{{*/
     foreach ($element['options'] as $key => $value) {
         // Select the element if it's in the values or if there are no values
         // and this is the first option
-		$option = $value['value'];
+        $option = $value['value'];
         if (
             (!is_array($values) && $key == $values)
             ||

@@ -45,10 +45,10 @@ $token = ArtefactTypeCloud::get_user_preferences('zotero', $USER->get('id'));
 $token = array_merge($token, array('oauth_verifier' => $oauth_verifier));
 
 if (isset($oauth_token) && $oauth_token == $token['oauth_token']) {
-	PluginBlocktypeZotero::access_token($token);
-	$SESSION->add_ok_msg(get_string('accesstokensaved', 'blocktype.cloud/zotero'));
+    PluginBlocktypeZotero::access_token($token);
+    $SESSION->add_ok_msg(get_string('accesstokensaved', 'blocktype.cloud/zotero'));
 } else {
-	$SESSION->add_error_msg(get_string('accesstokensavefailed', 'blocktype.cloud/zotero'));
+    $SESSION->add_error_msg(get_string('accesstokensavefailed', 'blocktype.cloud/zotero'));
 }
 
 redirect(get_config('wwwroot').'artefact/cloud');

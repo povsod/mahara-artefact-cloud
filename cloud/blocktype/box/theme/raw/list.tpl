@@ -20,7 +20,8 @@
     <h4><a href="{$WWWROOT}artefact/cloud/blocktype/box/download.php?id={$file.id}" target="_blank">{$file.title|str_shorten_text:20}</a></h4>
     {if $file.description}<p>{$file.description}</p>{/if}
     <div class="description">{$file.size} | {$file.ctime}
-    | <a href="{$WWWROOT}artefact/cloud/blocktype/box/details.php?id={$file.id}&type=file&view={$viewid}">{str tag=Details section=artefact.file}</a></div>
+    | <a href="{$WWWROOT}artefact/cloud/blocktype/box/details.php?id={$file.id}&type=file&view={$viewid}">{str tag=Details section=artefact.file}</a>
+    | <a href="{$WWWROOT}artefact/cloud/blocktype/box/preview.php?id={$file.id}" target="_blank">{str tag=preview section=artefact.cloud}</a></div>
   </div>
 </div>
 {/foreach}

@@ -7,21 +7,21 @@
    <tr>
      <th>{str tag=userinfo section=artefact.cloud}</th>
 {if $account.space_amount != null}
-	 <th><center>{str tag=usageinfo section=artefact.cloud}</center></th>
+     <th><center>{str tag=usageinfo section=artefact.cloud}</center></th>
 {/if}
    </tr>
  </thead>
  <tbody>
-	<td>
-	  <ul>
-	    <li><strong>{str tag=username section=artefact.cloud}:</strong> {$account.user_name}</li>
-	    {if $account.user_email != null}<li><strong>{str tag=useremail section=artefact.cloud}:</strong> <a href="mailto:{$account.user_email}">{$account.user_email}</a></li>{/if}
-	    {if $account.user_profile != null}<li><strong>{str tag=userprofile section=artefact.cloud}:</strong> <a href="{$account.user_profile}" target="_blank">{$account.user_profile}</a></li>{/if}
-	    <li><strong>{str tag=userid section=artefact.cloud}:</strong> {$account.user_id}</li>
-	  </ul>
-	</td>
+    <td>
+      <ul>
+        <li><strong>{str tag=username section=artefact.cloud}:</strong> {$account.user_name}</li>
+        {if $account.user_email != null}<li><strong>{str tag=useremail section=artefact.cloud}:</strong> <a href="mailto:{$account.user_email}">{$account.user_email}</a></li>{/if}
+        {if $account.user_profile != null}<li><strong>{str tag=userprofile section=artefact.cloud}:</strong> <a href="{$account.user_profile}" target="_blank">{$account.user_profile}</a></li>{/if}
+        {if $account.user_id != null}<li><strong>{str tag=userid section=artefact.cloud}:</strong> {$account.user_id}</li>{/if}
+      </ul>
+    </td>
 {if $account.space_amount != null}
-	<td style="padding-left:40px;padding-right:20px;">
+    <td style="padding-left:40px;padding-right:20px;">
     <div style="padding-top:5px">
     <p id="quota_message">{str tag=quotausage section=mahara arg1=$account.space_used arg2=$account.space_amount}</p>
     <div id="quotawrap">
@@ -38,7 +38,7 @@
 {/if}
     </div>
     </div>
-	</td>
+    </td>
 {/if}
  <tbody>
 </table>

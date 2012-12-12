@@ -34,21 +34,21 @@ require_once(get_config('docroot') . 'blocktype/lib.php');
 require_once(get_config('docroot') . 'artefact/cloud/lib.php');
 require_once('lib.php');
 
-global $USER;
+global $USER, $SESSION;
 $ticket     = param_alphanum('ticket', null);
 $auth_token = param_alphanum('auth_token', null);
 
 
 // Store access_token (auth_token). We'll need it later...
 if (!empty($auth_token)) {
-	$prefs = array(
-		'ticket'     => $ticket,
-		'auth_token' => $auth_token,
-	);
-	ArtefactTypeCloud::set_user_preferences('box', $USER->get('id'), $prefs);
-	$SESSION->add_ok_msg(get_string('accesstokensaved', 'blocktype.cloud/box'));
+    $prefs = array(
+        'ticket'     => $ticket,
+        'auth_token' => $auth_token,
+    );
+    ArtefactTypeCloud::set_user_preferences('box', $USER->get('id'), $prefs);
+    $SESSION->add_ok_msg(get_string('accesstokensaved', 'blocktype.cloud/box'));
 } else {
-	$SESSION->add_error_msg(get_string('accesstokensavefailed', 'blocktype.cloud/box'));
+    $SESSION->add_error_msg(get_string('accesstokensavefailed', 'blocktype.cloud/box'));
 }
 
 redirect(get_config('wwwroot').'artefact/cloud');

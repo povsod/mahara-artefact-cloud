@@ -41,14 +41,14 @@ $viewid = param_integer('view');
 
 $view = new View($viewid);
 if (!can_view_view($viewid)) {
-	throw new AccessDeniedException();
+    throw new AccessDeniedException();
 }
 
 $data = array();
 if ($type == 'collection') {
-	$data = PluginBlocktypeZotero::get_folder_info($id);
+    $data = PluginBlocktypeZotero::get_folder_info($id);
 } else {
-	$data = PluginBlocktypeZotero::get_file_info($id);
+    $data = PluginBlocktypeZotero::get_file_info($id);
 }
 //log_debug($data);
 

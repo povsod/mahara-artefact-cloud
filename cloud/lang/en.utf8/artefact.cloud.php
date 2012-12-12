@@ -27,12 +27,12 @@
 
 defined('INTERNAL') || die();
 
-$string['pluginname'] = 'Cloud';
+$string['pluginname'] = 'Cloud service';
 
-$string['cloud'] = 'Service';
-$string['clouds'] = 'Services';
+$string['cloud'] = 'Cloud service';
+$string['clouds'] = 'Cloud services';
 
-$string['service'] = 'Cloud service';
+$string['service'] = 'Service';
 $string['servicefiles'] = '%s Files';
 $string['unknownservice'] = 'Unknown Service';
 $string['account'] = 'Account';
@@ -72,22 +72,27 @@ $string['description'] = 'Description';
 
 $string['Shared'] = 'Shared';
 $string['Revision'] = 'Revision';
+$string['preview'] = 'Preview';
 
 $string['fileaccessdenied'] = 'You cannot access this file';
 $string['folderaccessdenied'] = 'You cannot access this folder';
 
-$string['consenttitle'] = 'The app %s would like to connect with your %s';
+$string['consenttitle'] = 'The app %s would like to connect with your %s account';
 $string['consentmessage'] = 'By entering the details in the form below, you are authorizing this application or website to access the files in your account.';
 $string['allow'] = 'Allow';
 $string['deny'] = 'Deny';
 
-/* ===== jQuery DataTable strings ===== */
 $string['filedetails'] = 'Details about %s';
+$string['exporttomahara'] = 'Export to Mahara';
+$string['export'] = 'Export';
+$string['selectfileformat'] = 'Select format to export file to:';
 $string['savetofolder'] = 'Save file to folder:';
 $string['savetomahara'] = 'Save to Mahara';
 $string['save'] = 'Save';
+$string['preview'] = 'Preview';
 $string['download'] = 'Download';
 
+/* ===== jQuery DataTable strings ===== */
 $string['loading'] = 'Loading ...';
 $string['processing'] = 'Processing ...';
 

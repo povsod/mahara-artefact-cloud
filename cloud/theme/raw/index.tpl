@@ -8,7 +8,7 @@
     <colgroup width="20%"></colgroup>
     <thead>
         <tr>
-			<th>&nbsp;</th>
+            <th>&nbsp;</th>
             <th class="cloudservice">{str tag='service' section='artefact.cloud'}</th>
             <th class="cloudaccount">{str tag='account' section='artefact.cloud'}</th>
             <th class="cloudaccount">{str tag='manage' section='artefact.cloud'}</th>

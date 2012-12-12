@@ -1,0 +1,9 @@
+The PEM format is the most common format that Certificate Authorities issue certificates in. PEM certificates usually
+have extentions such as .pem, .crt, .cer, and .key.
+
+They are Base64 encoded ASCII files and contain "-----BEGIN CERTIFICATE-----" and "-----END CERTIFICATE-----" statements.
+Server certificates, intermediate certificates, and private keys can all be put into the PEM format.
+
+Apache and other similar servers use PEM format certificates. Several PEM certificates, and even the private key, can be
+included in one file, one below the other, but most platforms, such as Apache, expect the certificates and private key to
+be in separate files.

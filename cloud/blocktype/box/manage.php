@@ -37,28 +37,28 @@ require_once('lib.php');
 
 
 $manageform = pieform(array(
-	'name'       => 'manageform',
-	'renderer'   => 'maharatable',
+    'name'       => 'manageform',
+    'renderer'   => 'maharatable',
     'plugintype' => 'artefact',
     'pluginname' => 'cloud',
     'configdirs' => array(get_config('libroot') . 'form/', get_config('docroot') . 'artefact/cloud/form/'),
-	'elements'   => array(
-		'manage' => array(
-			'type'     => 'datatables',
-			'title'    => '', //get_string('selectfiles','blocktype.cloud/box'),
-			'service'  => 'box',
-			'block'    => 0,
-			'fullpath' => null,
-			'options'  => array(
-				'manageButtons'  => true,
-				'showFolders'    => true,
-				'showFiles'      => true,
-				'selectFolders'  => false,
-				'selectFiles'    => false,
-				'selectMultiple' => false
-			),
-		),
-	),
+    'elements'   => array(
+        'manage' => array(
+            'type'     => 'datatables',
+            'title'    => '', //get_string('selectfiles','blocktype.cloud/box'),
+            'service'  => 'box',
+            'block'    => 0,
+            'fullpath' => null,
+            'options'  => array(
+                'manageButtons'  => true,
+                'showFolders'    => true,
+                'showFiles'      => true,
+                'selectFolders'  => false,
+                'selectFiles'    => false,
+                'selectMultiple' => false
+            ),
+        ),
+    ),
 ));
 
 
