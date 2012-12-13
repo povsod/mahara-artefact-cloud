@@ -265,9 +265,7 @@ function oauth_compute_hmac_sig($http_method, $url, $params, $consumer_secret, $
   $base_string = signature_base_string($http_method, $url, $params);
   $signature_key = rfc3986_encode($consumer_secret) . '&' . rfc3986_encode($token_secret);
   $sig = base64_encode(hash_hmac('sha1', $base_string, $signature_key, true));
-  if ($debug) {
-    logit("oauth_compute_hmac_sig:DBG:sig:$sig");
-  }
+
   return $sig;
 }
 
@@ -324,8 +322,6 @@ function signature_base_string($http_method, $url, $params)
   $base_string = rfc3986_encode(strtoupper($http_method)) . '&' .
                  rfc3986_encode(normalize_url($url)) . '&' .
                  rfc3986_encode(oauth_http_build_query($params));
-
-  logit("signature_base_string:INFO:normalized_base_string:$base_string");
 
   return $base_string;
 }
