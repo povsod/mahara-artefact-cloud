@@ -282,7 +282,8 @@ class PluginBlocktypeDropbox extends PluginBlocktypeCloud {
             if ($result->info['http_code'] == 200 && !empty($result->data)) {
                 // Store request_token (oauth_token) and request_token_secret (outh_token_secret)
                 // We'll need it later...
-                $prefs = oauth_parse_str(substr($result->data, $result->info['header_size']));
+                $body  = substr($result->data, $result->info['header_size']);
+				$prefs = oauth_parse_str($body);
                 ArtefactTypeCloud::set_user_preferences('dropbox', $USER->get('id'), $prefs);
                 redirect($cloud['wwwurl'].$cloud['version'].'/oauth/authorize?'.rfc3986_decode($body).'&oauth_callback='.$consumer['callback']);
             } else {
