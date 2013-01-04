@@ -559,17 +559,12 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
                 'auth_token' => $usertoken['auth_token'],
                 'folder_id' => $folder_id,
             );
-            $header = array();
-            $header[] = build_oauth_header($params, "Box API PHP Client");
-            $header[] = 'Content-Type: application/x-www-form-urlencoded';
             $config = array(
                 // Add parameters at the end: e.g.: params[]=nozip&params[]=onelevel
                 // Don't add them to $params array or the oauth_http_build_query function will urlencode [ and ] - We don't want that!
                 // Parameter 'nozip' is absolutely crucial! Without it, the response is base64-like encoded, but base64_decode won't work!
                 CURLOPT_URL => $url.'?'.oauth_http_build_query($params).'&params[]=nozip&params[]=onelevel',
                 CURLOPT_PORT => $port,
-                CURLOPT_HEADER => true,
-                CURLOPT_HTTPHEADER => $header,
                 CURLOPT_POST => false,
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_SSL_VERIFYHOST => 2,
@@ -578,7 +573,7 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
             );
             $result = mahara_http_request($config);
             if ($result->info['http_code'] == 200 && !empty($result->data)) {
-                $data = oauth_parse_xml(substr($result->data, $result->info['header_size']));
+                $data = oauth_parse_xml($result->data);
                 $output = array(
                     'folders' => array(),
                     'files'   => array()
@@ -735,17 +730,12 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
                 'auth_token' => $usertoken['auth_token'],
                 'folder_id' => $folder_id,
             );
-            $header = array();
-            $header[] = build_oauth_header($params, "Box API PHP Client");
-            $header[] = 'Content-Type: application/x-www-form-urlencoded';
             $config = array(
                 // Add parameters at the end: e.g.: params[]=nozip&params[]=onelevel
                 // Don't add them to $params array or the oauth_http_build_query function will urlencode [ and ] - We don't want that!
                 // Parameter 'nozip' is absolutely crucial! Without it, the response is base64-like encoded, but base64_decode won't work!
                 CURLOPT_URL => $url.'?'.oauth_http_build_query($params).'&params[]=nozip&params[]=onelevel',
                 CURLOPT_PORT => $port,
-                CURLOPT_HEADER => true,
-                CURLOPT_HTTPHEADER => $header,
                 CURLOPT_POST => false,
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_SSL_VERIFYHOST => 2,
@@ -754,7 +744,7 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
             );
             $result = mahara_http_request($config);
             if ($result->info['http_code'] == 200 && !empty($result->data)) {
-                $data = oauth_parse_xml(substr($result->data, $result->info['header_size']));
+                $data = oauth_parse_xml($result->data);
                 $output = array();
                 $count = 0;
                 // Add 'parent' row entry to jQuery Datatable...
@@ -863,17 +853,12 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
                 'auth_token' => $usertoken['auth_token'],
                 'folder_id' => $folder_id,
             );
-            $header = array();
-            $header[] = build_oauth_header($params, "Box API PHP Client");
-            $header[] = 'Content-Type: application/x-www-form-urlencoded';
             $config = array(
                 // Add parameters at the end: e.g.: params[]=nozip&params[]=onelevel&params[]=nofiles
                 // Don't add them to $params array or the oauth_http_build_query function will urlencode [ and ] - We don't want that!
                 // Parameter 'nozip' is absolutely crucial! Without it, the response is base64-like encoded, but base64_decode won't work!
                 CURLOPT_URL => $url.'?'.oauth_http_build_query($params).'&params[]=nozip&params[]=onelevel&params[]=nofiles',
                 CURLOPT_PORT => $port,
-                CURLOPT_HEADER => true,
-                CURLOPT_HTTPHEADER => $header,
                 CURLOPT_POST => false,
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_SSL_VERIFYHOST => 2,
@@ -882,7 +867,7 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
             );
             $result = mahara_http_request($config);
             if ($result->info['http_code'] == 200 && !empty($result->data)) {
-                $data = oauth_parse_xml(substr($result->data, $result->info['header_size']));
+                $data = oauth_parse_xml($result->data);
                 if (isset($data['status']) && $data['status'] == 'listing_ok') {
                     if (isset($data['tree']['folder']['@attributes']) && isset($data['tree']['folder']['@attributes']['id'])) {
                         $info = array(
@@ -933,14 +918,9 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
                 'auth_token' => $usertoken['auth_token'],
                 'file_id' => $file_id,
             );
-            $header = array();
-            $header[] = build_oauth_header($params, "Box API PHP Client");
-            $header[] = 'Content-Type: application/x-www-form-urlencoded';
             $config = array(
                 CURLOPT_URL => $url.'?'.oauth_http_build_query($params),
                 CURLOPT_PORT => $port,
-                CURLOPT_HEADER => true,
-                CURLOPT_HTTPHEADER => $header,
                 CURLOPT_POST => false,
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_SSL_VERIFYHOST => 2,
@@ -949,7 +929,7 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
             );
             $result = mahara_http_request($config);
             if ($result->info['http_code'] == 200 && !empty($result->data)) {
-                $data = oauth_parse_xml(substr($result->data, $result->info['header_size']));
+                $data = oauth_parse_xml($result->data);
                 if (isset($data['status']) && $data['status'] == 's_get_file_info') {
                     $info = array(
                         'id'          => $data['info']['file_id'],
@@ -1015,14 +995,9 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
                 'auth_token' => $usertoken['auth_token'],
                 'file_id' => $file_id,
             );
-            $header = array();
-            $header[] = build_oauth_header($params, "Box API PHP Client");
-            $header[] = 'Content-Type: application/x-www-form-urlencoded';
             $config = array(
                 CURLOPT_URL => $url.'?'.oauth_http_build_query($params),
                 CURLOPT_PORT => $port,
-                CURLOPT_HEADER => true,
-                CURLOPT_HTTPHEADER => $header,
                 CURLOPT_POST => false,
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_SSL_VERIFYHOST => 2,
@@ -1031,7 +1006,7 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
             );
             $result = mahara_http_request($config);
             if ($result->info['http_code'] == 200 && !empty($result->data)) {
-                $data = oauth_parse_xml(substr($result->data, $result->info['header_size']));
+                $data = oauth_parse_xml($result->data);
                 if (isset($data['status']) && $data['status'] == 's_create_file_embed') {
                     $html = $data['file_embed_html'];
                 } else {

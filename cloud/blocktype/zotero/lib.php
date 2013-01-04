@@ -56,12 +56,12 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
             // $connection = $data[1] which will actually hold the ID of collection
             $data = explode('-', $configdata['artefacts'][0]);
             $collection = $data[1];
-            $bibstyle = $configdata['bibstyle'];
+			$bibstyle = $configdata['bibstyle'];
         }
         // User selected to display all items in the library...
         else {
             $collection = '0';
-            $bibstyle = 'iso690-author-date-en';
+			$bibstyle = 'iso690-author-date-en';
         }
         
         $result = self::get_filelist($collection, $bibstyle);
@@ -218,8 +218,8 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
         return array(
             'ssl'        => true,
             'version'    => '',
-            // Don't forget to add trailing slash character '/'
-            // to both URLs below, when you set version!
+			// Don't forget to add trailing slash character '/'
+			// to both URLs below, when you set version!
             'baseurl'    => 'https://api.zotero.org',
             'wwwurl'     => 'https://www.zotero.org',
         );
@@ -247,7 +247,7 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
         $usertoken = self::user_tokens($USER->get('id'));
         if (!empty($consumer['key']) && !empty($consumer['secret'])) {
             if (isset($usertoken['oauth_token']) && !empty($usertoken['oauth_token'])) {
-                // Check if the oauth_token has been revoked or not...
+				// Check if the oauth_token has been revoked or not...
                 $url = $cloud['baseurl'].$cloud['version'].'/users/'.$usertoken['userID'].'/keys/'.$usertoken['oauth_token'];
                 $method = 'GET';
                 $port = $cloud['ssl'] ? '443' : '80';
@@ -276,22 +276,22 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
                 );
                 $result = mahara_http_request($config);
                 if ($result->info['http_code'] == 200 && !empty($result->data)) {
-                    // oauth_token hasn't been revoked yet, so...
+				    // oauth_token hasn't been revoked yet, so...
                     return array(
                         'service_name'  => 'zotero',
                         'service_url'   => 'http://www.zotero.com',
                         'service_auth'  => true,
                         //'revoke_access' => false,
                     );
-                } else {
-                    // oauth_token has been revoked, so...
+				} else {
+				    // oauth_token has been revoked, so...
                     return array(
                         'service_name'  => 'zotero',
                         'service_url'   => 'http://www.zotero.com',
                         'service_auth'  => false,
                         //'revoke_access' => false,
                     );
-                }
+				}
             } else {
                 return array(
                     'service_name'  => 'zotero',
@@ -345,7 +345,7 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
                 $prefs = oauth_parse_str($body);
                 ArtefactTypeCloud::set_user_preferences('zotero', $USER->get('id'), $prefs);
                 redirect($cloud['wwwurl'].$cloud['version'].'/oauth/authorize?'.rfc3986_decode($body).'&oauth_callback='.$consumer['callback']);
-            } else {
+			} else {
                 $SESSION->add_error_msg(get_string('requesttokennotreturned', 'blocktype.cloud/zotero'));
             }
         } else {
@@ -354,7 +354,7 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
     }
 
     public function access_token($usertoken) {
-        global $USER, $SESSION;
+        global $USER;
         $cloud    = self::cloud_info();
         $consumer = self::consumer_tokens();
         if (!empty($consumer['key']) && !empty($consumer['secret'])) {
@@ -366,8 +366,8 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
                 'oauth_nonce' => mt_rand(),
                 'oauth_timestamp' => time(),
                 'oauth_consumer_key' => $consumer['key'],
-                'oauth_token' => $usertoken['oauth_token'],
-                'oauth_verifier' => $usertoken['oauth_verifier'],
+				'oauth_token' => $usertoken['oauth_token'],
+				'oauth_verifier' => $usertoken['oauth_verifier'],
                 'oauth_signature_method' => 'HMAC-SHA1',
             );
             $params['oauth_signature'] = oauth_compute_hmac_sig($method, $url, $params, $consumer['secret'], $usertoken['oauth_token_secret']);
@@ -393,7 +393,7 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
                 $body = substr($result->data, $result->info['header_size']);
                 $prefs = oauth_parse_str($body);
                 ArtefactTypeCloud::set_user_preferences('zotero', $USER->get('id'), $prefs);
-            }
+			}
         } else {
             throw new ConfigException('Can\'t find Zotero consumer key and/or consumer secret.');
         }
@@ -430,14 +430,9 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
                 'oauth_signature_method' => 'HMAC-SHA1',
             );
             $params['oauth_signature'] = oauth_compute_hmac_sig($method, $url, $params, $consumer['secret'], $usertoken['oauth_token_secret']);
-            $header = array();
-            $header[] = build_oauth_header($params, "Zotero API PHP Client");
-            $header[] = 'Content-Type: application/x-www-form-urlencoded';
             $config = array(
                 CURLOPT_URL => $url.'?'.oauth_http_build_query($params),
                 CURLOPT_PORT => $port,
-                CURLOPT_HEADER => true,
-                CURLOPT_HTTPHEADER => $header,
                 CURLOPT_POST => false,
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_SSL_VERIFYHOST => 2,
@@ -446,8 +441,7 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
             );
             $result = mahara_http_request($config);
             if ($result->info['http_code'] == 200 && !empty($result->data)) {
-                $body = substr($result->data, $result->info['header_size']);
-                $data = json_decode($body);
+                $data = json_decode($result->data);
                 return array(
                     'service_name' => 'zotero',
                     'service_auth' => true,
@@ -457,7 +451,7 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
                     'space_amount' => null,
                     'space_ratio'  => null,
                 );
-            } else {
+			} else {
                 return array(
                     'service_name' => 'zotero',
                     'service_auth' => false,
@@ -467,7 +461,7 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
                     'space_amount' => null,
                     'space_ratio'  => null,
                 );
-            }
+			}
          } else {
             throw new ConfigException('Can\'t find Zotero consumer key and/or consumer secret.');
         }
@@ -483,7 +477,7 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
      *      get_filelist basically corresponds to get_formatted_list_of_references_in_collection!
      */
     public function get_filelist($folder_id='0', $style='apa') {
-        global $USER, $SESSION;
+        global $USER;
         $cloud     = self::cloud_info();
         $consumer  = self::consumer_tokens();
         $usertoken = self::user_tokens($USER->get('id'));
@@ -507,20 +501,15 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
                 'oauth_consumer_key' => $consumer['key'],
                 'oauth_token' => $usertoken['oauth_token'],
                 'oauth_signature_method' => 'HMAC-SHA1',
-                // Method specific prameters...
-                'key' => $usertoken['oauth_token'],
+				// Method specific prameters...
+				'key' => $usertoken['oauth_token'],
                 'format'  => 'bib',
                 'style' => $style
             );
             $params['oauth_signature'] = oauth_compute_hmac_sig($method, $url, $params, $consumer['secret'], $usertoken['oauth_token_secret']);
-            $header = array();
-            $header[] = build_oauth_header($params, "Zotero API PHP Client");
-            $header[] = 'Content-Type: application/x-www-form-urlencoded';
             $config = array(
                 CURLOPT_URL => $url.'?'.oauth_http_build_query($params),
                 CURLOPT_PORT => $port,
-                CURLOPT_HEADER => true,
-                CURLOPT_HTTPHEADER => $header,
                 CURLOPT_POST => false,
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_SSL_VERIFYHOST => 2,
@@ -529,9 +518,8 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
             );
             $result = mahara_http_request($config);
             if ($result->info['http_code'] == 200 && !empty($result->data)) {
-                $body = substr($result->data, $result->info['header_size']);
-                return $body;
-            }
+				return $result->data;
+			}
         } else {
             throw new ConfigException('Can\'t find Zotero consumer key and/or consumer secret.');
         }
@@ -636,20 +624,15 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
                 'oauth_consumer_key' => $consumer['key'],
                 'oauth_token' => $usertoken['oauth_token'],
                 'oauth_signature_method' => 'HMAC-SHA1',
-                // Method specific prameters...
-                'key' => $usertoken['oauth_token'],
+				// Method specific prameters...
+				'key' => $usertoken['oauth_token'],
                 'format'  => 'atom',
                 'content' => 'json'
             );
             $params['oauth_signature'] = oauth_compute_hmac_sig($method, $url, $params, $consumer['secret'], $usertoken['oauth_token_secret']);
-            $header = array();
-            $header[] = build_oauth_header($params, "Zotero API PHP Client");
-            $header[] = 'Content-Type: application/x-www-form-urlencoded';
             $config = array(
                 CURLOPT_URL => $url.'?'.oauth_http_build_query($params),
                 CURLOPT_PORT => $port,
-                CURLOPT_HEADER => true,
-                CURLOPT_HTTPHEADER => $header,
                 CURLOPT_POST => false,
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_SSL_VERIFYHOST => 2,
@@ -658,8 +641,7 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
             );
             $result = mahara_http_request($config);
             if ($result->info['http_code'] == 200 && !empty($result->data)) {
-                $body = substr($result->data, $result->info['header_size']);
-                $xml = simplexml_load_string($body);
+                $xml = simplexml_load_string($result->data);
                 //Use that namespace
                 $namespaces = $xml->getNameSpaces(true);
                 //Now we don't have the URL hard-coded
@@ -725,8 +707,8 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
     /*
      * SEE: http://www.zotero.org/support/dev/server_api/read_api
      *      get_folder_info basically corresponds to get_collection_info!
-     *
-     * NOTE: Working, but not actually used yet!
+	 *
+	 * NOTE: Working, but not actually used yet!
      */
     public function get_folder_info($folder_id='0') {
         global $USER, $SESSION;
@@ -749,20 +731,15 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
                 'oauth_consumer_key' => $consumer['key'],
                 'oauth_token' => $usertoken['oauth_token'],
                 'oauth_signature_method' => 'HMAC-SHA1',
-                // Method specific prameters...
-                'key' => $usertoken['oauth_token'],
+				// Method specific prameters...
+				'key' => $usertoken['oauth_token'],
                 'format'  => 'atom',
                 'content' => 'json'
             );
             $params['oauth_signature'] = oauth_compute_hmac_sig($method, $url, $params, $consumer['secret'], $usertoken['oauth_token_secret']);
-            $header = array();
-            $header[] = build_oauth_header($params, "Zotero API PHP Client");
-            $header[] = 'Content-Type: application/x-www-form-urlencoded';
             $config = array(
                 CURLOPT_URL => $url.'?'.oauth_http_build_query($params),
                 CURLOPT_PORT => $port,
-                CURLOPT_HEADER => true,
-                CURLOPT_HTTPHEADER => $header,
                 CURLOPT_POST => false,
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_SSL_VERIFYHOST => 2,
@@ -772,8 +749,7 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
             $result = mahara_http_request($config);
             if (!empty($result) && strlen($folder_id) > 0) {
                 if ($result->info['http_code'] == 200 && !empty($result->data)) {
-                    $body = substr($result->data, $result->info['header_size']);
-                    $xml = simplexml_load_string($body);
+                    $xml = simplexml_load_string($result->data);
                     $content = json_decode($xml->content);
                     $collectionTitle = $content->name;
                 } else {
@@ -794,20 +770,15 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
                 'oauth_consumer_key' => $consumer['key'],
                 'oauth_token' => $usertoken['oauth_token'],
                 'oauth_signature_method' => 'HMAC-SHA1',
-                // Method specific prameters...
-                'key' => $usertoken['oauth_token'],
+				// Method specific prameters...
+				'key' => $usertoken['oauth_token'],
                 'format'  => 'atom',
                 'content' => 'json'
             );
             $params['oauth_signature'] = oauth_compute_hmac_sig($method, $url, $params, $consumer['secret'], $usertoken['oauth_token_secret']);
-            $header = array();
-            $header[] = build_oauth_header($params, "Zotero API PHP Client");
-            $header[] = 'Content-Type: application/x-www-form-urlencoded';
             $config = array(
                 CURLOPT_URL => $url.'?'.oauth_http_build_query($params),
                 CURLOPT_PORT => $port,
-                CURLOPT_HEADER => true,
-                CURLOPT_HTTPHEADER => $header,
                 CURLOPT_POST => false,
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_SSL_VERIFYHOST => 2,
@@ -817,8 +788,7 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
             $result = mahara_http_request($config);
             if (!empty($result) && strlen($folder_id) > 0) {
                 if ($result->info['http_code'] == 200 && !empty($result->data)) {
-                    $body = substr($result->data, $result->info['header_size']);
-                    $xml = simplexml_load_string($body);
+                    $xml = simplexml_load_string($result->data);
                     //Use that namespace
                     $namespaces = $xml->getNameSpaces(true);
                     //Now we don't have the URL hard-coded
@@ -871,21 +841,14 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
     /*
      * SEE: http://www.zotero.org/support/dev/server_api/read_api
      *      get_file_info basically corresponds to get_item_info!
-     *
-     * NOTE: Working, but not actually used yet!
+	 *
+	 * NOTE: Working, but not actually used yet!
      */
     public function get_file_info($file_id='0') {
         global $USER, $SESSION;
         $cloud     = self::cloud_info();
         $consumer  = self::consumer_tokens();
         $usertoken = self::user_tokens($USER->get('id'));
-        /*
-        $params    = array(
-            'key'     => $usertoken['oauth_token'],
-            'format'  => 'atom',
-            'content' => 'json'
-        );
-        */
         if (!empty($consumer['key']) && !empty($consumer['secret'])) {
             $url = $cloud['baseurl'].$cloud['version'].'/users/'.$usertoken['userID'].'/items/'.$file_id;
             $method = 'GET';
@@ -897,20 +860,15 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
                 'oauth_consumer_key' => $consumer['key'],
                 'oauth_token' => $usertoken['oauth_token'],
                 'oauth_signature_method' => 'HMAC-SHA1',
-                // Method specific prameters...
-                'key' => $usertoken['oauth_token'],
+				// Method specific prameters...
+				'key' => $usertoken['oauth_token'],
                 'format'  => 'atom',
                 'content' => 'json'
             );
             $params['oauth_signature'] = oauth_compute_hmac_sig($method, $url, $params, $consumer['secret'], $usertoken['oauth_token_secret']);
-            $header = array();
-            $header[] = build_oauth_header($params, "Zotero API PHP Client");
-            $header[] = 'Content-Type: application/x-www-form-urlencoded';
             $config = array(
                 CURLOPT_URL => $url.'?'.oauth_http_build_query($params),
                 CURLOPT_PORT => $port,
-                CURLOPT_HEADER => true,
-                CURLOPT_HTTPHEADER => $header,
                 CURLOPT_POST => false,
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_SSL_VERIFYHOST => 2,
@@ -920,8 +878,7 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
             $result = mahara_http_request($config);
             if (!empty($result) && strlen($file_id) > 0) {
                 if ($result->info['http_code'] == 200 && !empty($result->data)) {
-                    $body = substr($result->data, $result->info['header_size']);
-                    $xml = simplexml_load_string($body);
+                    $xml = simplexml_load_string($result->data);
                     $content = json_decode($xml->content);
 
                     $creatorsList = array();

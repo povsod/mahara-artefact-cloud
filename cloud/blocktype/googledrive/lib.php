@@ -647,7 +647,7 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
      *
      */
     public function get_folder_content($folder_id='root', $options, $block=0, $fullpath='root|@') {
-        global $USER, $THEME, $_SESSION;
+        global $USER, $THEME;
         
         // Get selected artefacts (folders and/or files)
         if ($block > 0) {
@@ -933,7 +933,7 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
      * SEE: https://developers.google.com/drive/v2/reference/files
      */
     public function download_file($file_id=0) {
-        global $USER, $SESSION;
+        global $USER;
         $cloud       = self::cloud_info();
         $consumer    = self::consumer_tokens();
         // Check if access token is still valid...
@@ -983,7 +983,7 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
      * SEE: https://developers.google.com/drive/v2/reference/files
      */
     public function export_file($export_url) {
-        global $USER, $SESSION;
+        global $USER;
         $cloud       = self::cloud_info();
         $consumer    = self::consumer_tokens();
         // Check if access token is still valid...

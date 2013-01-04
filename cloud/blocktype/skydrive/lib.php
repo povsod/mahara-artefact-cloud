@@ -612,7 +612,7 @@ class PluginBlocktypeSkydrive extends PluginBlocktypeCloud {
      *
      */
     public function get_folder_content($folder_id=0, $options, $block=0, $fullpath='0|@') {
-        global $USER, $THEME, $_SESSION;
+        global $USER, $THEME;
         
         // Get selected artefacts (folders and/or files)
         if ($block > 0) {
@@ -850,7 +850,7 @@ class PluginBlocktypeSkydrive extends PluginBlocktypeCloud {
      * SEE: http://msdn.microsoft.com/en-us/library/live/hh826531.aspx#downloading_files
      */
     public function download_file($file_id=0) {
-        global $USER, $SESSION;
+        global $USER;
         $cloud       = self::cloud_info();
         $consumer    = self::consumer_tokens();
         // Check if access token is still valid...

@@ -259,6 +259,26 @@ function bytes_to_size1024($bytes, $precision=2) {
     return @round($bytes / pow(1024, ($i = floor(log($bytes, 1024)))), $precision).''.$unit[$i];
 }
 
+/**
+ * Converts seconds into human readable format (HH:MM:SS),
+ * even if there are more than 24 hours...
+ * @param integer $seconds
+ * @return string time formated as HH:MM:SS
+ * @link http://bytes.com/topic/php/answers/3917-seconds-converted-hh-mm-ss
+ */
+function seconds_to_hms($seconds) {
+if ($seconds < 0) return '00:00:00';
+$minutes = (int)($seconds / 60);
+$seconds = $seconds % 60;
+$hours = (int)($minutes / 60);
+$minutes = $minutes % 60;
+$time = array(
+    str_pad($hours, 2, "0", STR_PAD_LEFT),
+    str_pad($minutes, 2, "0", STR_PAD_LEFT),
+    str_pad($seconds, 2, "0", STR_PAD_LEFT),
+);
+return implode(':', $time);
+}
 
 /**
  * Returns folder tree as options for web form select element

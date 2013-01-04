@@ -200,7 +200,7 @@ class PluginBlocktypeSugarsync extends PluginBlocktypeCloud {
             'ssl'        => true,
             'version'    => '',
             'baseurl'    => 'https://api.sugarsync.com/',
-			'authurl'    => 'https://api.sugarsync.com/authorization/',
+            'authurl'    => 'https://api.sugarsync.com/authorization/',
             'appauthurl' => 'https://api.sugarsync.com/app-authorization/',
         );
     }
@@ -294,16 +294,16 @@ XML;
             $result = mahara_http_request($config);
             if ($result->info['http_code'] == 201 /* HTTP/1.1 201 Created */ && !empty($result->data)) {
                 // Get user ID...
-				$data = oauth_parse_xml(substr($result->data, $result->info['header_size']));
+                $data = oauth_parse_xml(substr($result->data, $result->info['header_size']));
                 $data['userid'] = basename($data['user']); // Extract user ID part from the URL
-				// Get access token...
+                // Get access token...
                 $matches = array();
                 preg_match('#authorization\/([A-Za-z0-9\-\_\.]+)#', $result->data, $matches);
                 $data['access_token'] = $matches[1];
                 return $data;
             } else {
                 $SESSION->add_error_msg(get_string('accesstokennotreturned', 'blocktype.cloud/sugarsync'));
-		    }
+            }
         } else {
             throw new ConfigException('Can\'t find SugarSync consumer key and/or consumer secret.');
         }
@@ -350,7 +350,7 @@ XML;
             );
             $result = mahara_http_request($config);
             if ($result->info['http_code'] == 200 && !empty($result->data)) {
-			    $data = oauth_parse_xml(substr($result->data, $result->info['header_size']));
+                $data = oauth_parse_xml(substr($result->data, $result->info['header_size']));
                 return array(
                     'service_name' => 'sugarsync',
                     'service_auth' => true,
@@ -372,7 +372,7 @@ XML;
                     'space_amount' => null,
                     'space_ratio'  => null,
                 );
-			}
+            }
          } else {
             throw new ConfigException('Can\'t find SugarSync consumer key and/or consumer secret.');
         }
@@ -399,9 +399,9 @@ XML;
         if (!empty($consumer['key']) && !empty($consumer['secret'])) {
             if (strlen($folder_id) > 1) {
                 $url = $cloud['baseurl'].'folder/'.$folder_id.'/contents';
-			} else {
-			    $url = $accesstoken['user'].'/folders/contents';
-			}
+            } else {
+                $url = $accesstoken['user'].'/folders/contents';
+            }
             $method = 'GET';
             $port = $cloud['ssl'] ? '443' : '80';
             $header = array();
@@ -423,7 +423,7 @@ XML;
             $result = mahara_http_request($config);
             if (!empty($result)) {
                 if ($result->info['http_code'] == 200 && !empty($result->data)) {
-			        $data = oauth_parse_xml(substr($result->data, $result->info['header_size']));
+                    $data = oauth_parse_xml(substr($result->data, $result->info['header_size']));
                     $output = array(
                         'folders' => array(),
                         'files'   => array()
@@ -492,7 +492,7 @@ XML;
      *
      */
     public function get_folder_content($folder_id=0, $options, $block=0, $fullpath='0|@') {
-        global $USER, $THEME, $_SESSION;
+        global $USER, $THEME;
         
         // Get selected artefacts (folders and/or files)
         if ($block > 0) {
@@ -558,9 +558,9 @@ XML;
         if (!empty($consumer['key']) && !empty($consumer['secret'])) {
             if (strlen($folder_id) > 1) {
                 $url = $cloud['baseurl'].'folder/'.$folder_id.'/contents';
-			} else {
-			    $url = $accesstoken['user'].'/folders/contents';
-			}
+            } else {
+                $url = $accesstoken['user'].'/folders/contents';
+            }
             $method = 'GET';
             $port = $cloud['ssl'] ? '443' : '80';
             $header = array();
@@ -582,7 +582,7 @@ XML;
             $result = mahara_http_request($config);
             if (!empty($result)) {
                 if ($result->info['http_code'] == 200 && !empty($result->data)) {
-			        $data = oauth_parse_xml(substr($result->data, $result->info['header_size']));
+                    $data = oauth_parse_xml(substr($result->data, $result->info['header_size']));
                     $output = array();
                     $count = 0;
                     // Add 'parent' row entry to jQuery Datatable...
@@ -652,7 +652,7 @@ XML;
         $usertoken   = self::user_tokens($USER->get('id'));
         $accesstoken = self::access_token($usertoken['refresh_token']);
         if (!empty($consumer['key']) && !empty($consumer['secret'])) {
-		    $url = $cloud['baseurl'].'folder/'.$folder_id;
+            $url = $cloud['baseurl'].'folder/'.$folder_id;
             $method = 'GET';
             $port = $cloud['ssl'] ? '443' : '80';
             $header = array();
@@ -673,7 +673,7 @@ XML;
             );
             $result = mahara_http_request($config);
             if ($result->info['http_code'] == 200 && !empty($result->data)) {
-			    $data = oauth_parse_xml(substr($result->data, $result->info['header_size']));
+                $data = oauth_parse_xml(substr($result->data, $result->info['header_size']));
                 $info = array(
                     'id'          => str_replace('/', ':', $data['dsid']),
                     'name'        => $data['displayName'],
@@ -701,7 +701,7 @@ XML;
         $usertoken = self::user_tokens($USER->get('id'));
         $accesstoken = self::access_token($usertoken['refresh_token']);
         if (!empty($consumer['key']) && !empty($consumer['secret'])) {
-		    $url = $cloud['baseurl'].'file/'.$file_id;
+            $url = $cloud['baseurl'].'file/'.$file_id;
             $method = 'GET';
             $port = $cloud['ssl'] ? '443' : '80';
             $header = array();
@@ -722,7 +722,7 @@ XML;
             );
             $result = mahara_http_request($config);
             if ($result->info['http_code'] == 200 && !empty($result->data)) {
-			    $data = oauth_parse_xml(substr($result->data, $result->info['header_size']));
+                $data = oauth_parse_xml(substr($result->data, $result->info['header_size']));
                 $info = array(
                     'id'          => str_replace('/', ':', $data['dsid']),
                     'name'        => $data['displayName'],
@@ -749,7 +749,7 @@ XML;
      * SEE: http://www.sugarsync.com/dev/download-file-example.html
      */
     public function download_file($file_id=0) {
-        global $USER, $SESSION;
+        global $USER;
         $cloud       = self::cloud_info();
         $consumer    = self::consumer_tokens();
         $usertoken   = self::user_tokens($USER->get('id'));

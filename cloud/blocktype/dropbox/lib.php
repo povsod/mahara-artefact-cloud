@@ -283,7 +283,7 @@ class PluginBlocktypeDropbox extends PluginBlocktypeCloud {
                 // Store request_token (oauth_token) and request_token_secret (outh_token_secret)
                 // We'll need it later...
                 $body  = substr($result->data, $result->info['header_size']);
-				$prefs = oauth_parse_str($body);
+                $prefs = oauth_parse_str($body);
                 ArtefactTypeCloud::set_user_preferences('dropbox', $USER->get('id'), $prefs);
                 redirect($cloud['wwwurl'].$cloud['version'].'/oauth/authorize?'.rfc3986_decode($body).'&oauth_callback='.$consumer['callback']);
             } else {
@@ -818,7 +818,7 @@ class PluginBlocktypeDropbox extends PluginBlocktypeCloud {
      * SEE: https://www.dropbox.com/developers/reference/api#shares
      */
     public function public_url($file_id='/') {
-        global $USER, $THEME;
+        global $USER;
         $cloud     = self::cloud_info();
         $consumer  = self::consumer_tokens();
         $usertoken = self::user_tokens($USER->get('id'));
