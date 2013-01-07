@@ -38,7 +38,7 @@ require_once('lib.php');
 
 $manageform = pieform(array(
     'name'       => 'manageform',
-    'renderer'   => 'maharatable',
+    'renderer'   => 'datatables',
     'plugintype' => 'artefact',
     'pluginname' => 'cloud',
     'configdirs' => array(get_config('libroot') . 'form/', get_config('docroot') . 'artefact/cloud/form/'),
