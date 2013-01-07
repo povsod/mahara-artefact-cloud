@@ -47,7 +47,7 @@ function pieform_element_datatables(Pieform $form, $element) {/*{{{*/
 
     $html = <<<EOHTML
 <input type="hidden" name="{$name}" id="{$name}" value="">
-<table id="fileList" class="tablerenderer filelist" width="700">
+<table id="fileList" class="tablerenderer filelist" width="100%">
     <thead>
         <tr> 
             <th class="filethumb" width="24"><img src="{$WWWROOT}artefact/cloud/blocktype/{$SERVICE}/img/root.png" title="{$strService}"></th>
