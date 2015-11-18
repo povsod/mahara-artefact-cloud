@@ -1,27 +1,11 @@
 <?php
 /**
- * Mahara: Electronic portfolio, weblog, resume builder and social networking
- * Copyright (C) 2006-2012 Catalyst IT Ltd and others; see:
- *                         http://wiki.mahara.org/Contributors
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * @package    mahara
  * @subpackage blocktype-sugarsync
  * @author     Gregor Anzelj
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2012 Gregor Anzelj, gregor.anzelj@gmail.com
+ * @copyright  (C) 2014 Gregor Anzelj, gregor.anzelj@gmail.com
  *
  */
 
@@ -44,19 +28,22 @@ class PluginBlocktypeSugarsync extends PluginBlocktypeCloud {
     }
 
     public static function get_categories() {
-        return array('cloud');
+        return array('external');
     }
 
     public static function render_instance(BlockInstance $instance, $editing=false) {
         $configdata = $instance->get('configdata');
         $viewid     = $instance->get('view');
         
+        $view = new View($viewid);
+        $ownerid = $view->get('owner');
+
         $fullpath = (!empty($configdata['fullpath']) ? $configdata['fullpath'] : '0|@');
         list($folder, $path) = explode('|', $fullpath, 2);
         $selected = (!empty($configdata['artefacts']) ? $configdata['artefacts'] : array());
         
         $smarty = smarty_core();
-        $data = self::get_filelist($folder, $selected);
+        $data = self::get_filelist($folder, $selected, $ownerid);
         $smarty->assign('folders', $data['folders']);
         $smarty->assign('files', $data['files']);
         $smarty->assign('viewid', $viewid);
@@ -73,23 +60,52 @@ class PluginBlocktypeSugarsync extends PluginBlocktypeCloud {
         $allowed = (!empty($configdata['allowed']) ? $configdata['allowed'] : array());
         safe_require('artefact', 'cloud');
         $instance->set('artefactplugin', 'cloud');
+        $viewid = $instance->get('view');
+
+        $view = new View($viewid);
+        $ownerid = $view->get('owner');
         
-        return array(
-            'sugarsyncfiles' => array(
-                'type'     => 'datatables',
-                'title'    => get_string('selectfiles','blocktype.cloud/sugarsync'),
-                'service'  => 'sugarsync',
-                'block'    => $instanceid,
-                'fullpath' => (isset($configdata['fullpath']) ? $configdata['fullpath'] : null),
-                'options'  => array(
-                    'showFolders'    => true,
-                    'showFiles'      => true,
-                    'selectFolders'  => false,
-                    'selectFiles'    => true,
-                    'selectMultiple' => true
+        $data = ArtefactTypeCloud::get_user_preferences('box', $ownerid);
+        if ($data) {
+            return array(
+                'sugarsynclogo' => array(
+                    'type' => 'html',
+                    'value' => '<img src="' . get_config('wwwroot') . 'artefact/cloud/blocktype/sugarsync/theme/raw/static/images/logo.png">',
                 ),
-            ),
-        );
+                'sugarsyncisconnect' => array(
+                    'type' => 'cancel',
+                    'value' => get_string('revokeconnection', 'blocktype.cloud/sugarsync'),
+                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/sugarsync/account.php?action=logout',
+                ),
+                'sugarsyncfiles' => array(
+                    'type'     => 'datatables',
+                    'title'    => get_string('selectfiles','blocktype.cloud/sugarsync'),
+                    'service'  => 'sugarsync',
+                    'block'    => $instanceid,
+                    'fullpath' => (isset($configdata['fullpath']) ? $configdata['fullpath'] : null),
+                    'options'  => array(
+                        'showFolders'    => true,
+                        'showFiles'      => true,
+                        'selectFolders'  => false,
+                        'selectFiles'    => true,
+                        'selectMultiple' => true
+                    ),
+                ),
+            );
+        }
+        else {
+            return array(
+                'sugarsynclogo' => array(
+                    'type' => 'html',
+                    'value' => '<img src="' . get_config('wwwroot') . 'artefact/cloud/blocktype/sugarsync/theme/raw/static/images/logo.png">',
+                ),
+                'sugarsyncisconnect' => array(
+                    'type' => 'cancel',
+                    'value' => get_string('connecttosugarsync', 'blocktype.cloud/sugarsync'),
+                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/sugarsync/account.php?action=login',
+                ),
+            );
+        }
     }
 
     public static function instance_config_save($values) {
@@ -195,35 +211,31 @@ class PluginBlocktypeSugarsync extends PluginBlocktypeCloud {
      * Methods & stuff for accessing SugarSync API *
      ***********************************************/
     
-    public function cloud_info() {
-        return array(
-            'ssl'        => true,
-            'version'    => '',
-            'baseurl'    => 'https://api.sugarsync.com/',
-            'authurl'    => 'https://api.sugarsync.com/authorization/',
-            'appauthurl' => 'https://api.sugarsync.com/app-authorization/',
-        );
-    }
-    
-    public function consumer_tokens() {
-        return array(
-            'appid'    => get_config_plugin('blocktype', 'sugarsync', 'applicationid'),
-            'key'      => get_config_plugin('blocktype', 'sugarsync', 'consumerkey'),
-            'secret'   => get_config_plugin('blocktype', 'sugarsync', 'consumersecret'),
-            'callback' => get_config('wwwroot') . 'artefact/cloud/blocktype/sugarsync/callback.php'
-        );
-    }
-    
-    public function user_tokens($userid) {
-        return ArtefactTypeCloud::get_user_preferences('sugarsync', $userid);
-    }
-    
-    public function service_list() {
+    // This function is public instead of private
+    // since it gets called from account.php...
+    public function get_service_consumer($owner=null) {
         global $USER;
-        $consumer    = self::consumer_tokens();
-        $usertoken   = self::user_tokens($USER->get('id'));
-        if (!empty($consumer['key']) && !empty($consumer['secret'])) {
-            if (isset($usertoken['refresh_token']) && !empty($usertoken['refresh_token'])) {
+        if (!isset($owner) || is_null($owner)) {
+            $owner = $USER->get('id');
+        }
+        $service = new StdClass();
+        $service->ssl        = true;
+        $service->version    = ''; // API Version
+        $service->baseurl    = 'https://api.sugarsync.com/';
+        $service->authurl    = 'https://api.sugarsync.com/authorization/';
+        $service->appauthurl = 'https://api.sugarsync.com/app-authorization/';
+        $service->appid      = get_config_plugin('blocktype', 'sugarsync', 'applicationid');
+        $service->key        = get_config_plugin('blocktype', 'sugarsync', 'consumerkey');
+        $service->secret     = get_config_plugin('blocktype', 'sugarsync', 'consumersecret');
+        $service->callback   = get_config('wwwroot') . 'artefact/cloud/blocktype/sugarsync/callback.php';
+        $service->usrprefs   = ArtefactTypeCloud::get_user_preferences('sugarsync', $owner);
+        return $service;
+    }
+
+    public function service_list() {
+        $consumer = self::get_service_consumer();
+        if (!empty($consumer->key) && !empty($consumer->secret)) {
+            if (isset($consumer->usrprefs['refresh_token']) && !empty($consumer->usrprefs['refresh_token'])) {
                 return array(
                     'service_name'   => 'sugarsync',
                     'service_url'    => 'http://www.sugarsync.com',
@@ -240,7 +252,8 @@ class PluginBlocktypeSugarsync extends PluginBlocktypeCloud {
                     //'revoke_access'  => false,
                 );
             }
-        } else {
+        }
+        else {
             throw new ConfigException('Can\'t find SugarSync consumer key and/or consumer secret.');
         }
     }
@@ -250,14 +263,13 @@ class PluginBlocktypeSugarsync extends PluginBlocktypeCloud {
         // Get and store refresh token implemented in account.php file, because we need to simulate "User consent page"...
     }
 
+    // SEE: https://www.sugarsync.com/dev/get-auth-token-example.html
     public function access_token($refresh_token) {
-        global $USER, $SESSION;
-
-        $cloud    = PluginBlocktypeSugarsync::cloud_info();
-        $consumer = PluginBlocktypeSugarsync::consumer_tokens();
-        $key    = $consumer['key'];
-        $secret = $consumer['secret'];
-        $token  = $cloud['appauthurl'] . $refresh_token;
+        global $SESSION;
+        $consumer = self::get_service_consumer();
+        $key    = $consumer->key;
+        $secret = $consumer->secret;
+        $token  = $consumer->appauthurl . $refresh_token;
     
         $request_body = <<< XML
 <?xml version="1.0" encoding="UTF-8" ?>
@@ -268,12 +280,11 @@ class PluginBlocktypeSugarsync extends PluginBlocktypeCloud {
 </tokenAuthRequest>
 XML;
 
-        if (!empty($consumer['key']) && !empty($consumer['secret'])) {
+        if (!empty($consumer->key) && !empty($consumer->secret)) {
             // SugarSync doesn't have API version yet, so...
-            //$url = $cloud['baseurl'].$cloud['version'].'/authorization';
-            $url = $cloud['authurl'];
-            $method = 'POST';
-            $port = $cloud['ssl'] ? '443' : '80';
+            //$url = $consumer->baseurl.$consumer->version.'/authorization';
+            $url = $consumer->authurl;
+            $port = $consumer->ssl ? '443' : '80';
             $header = array();
             $header[] = 'User-Agent: SugarSync API PHP Client';
             $header[] = 'Host: api.sugarsync.com';
@@ -319,22 +330,16 @@ XML;
         // Nothing to do!
     }
     
-    /*
-     * SEE: http://www.sugarsync.com/dev/api/method/get-user-info.html
-     */
+    // SEE: http://www.sugarsync.com/dev/api/method/get-user-info.html
     public function account_info() {
-        global $USER;
-        $cloud       = self::cloud_info();
-        $consumer    = self::consumer_tokens();
-        $usertoken   = self::user_tokens($USER->get('id'));
-        $accesstoken = self::access_token($usertoken['refresh_token']);
-        if (!empty($consumer['key']) && !empty($consumer['secret'])) {
-            $url = $accesstoken['user'];
-            $method = 'GET';
-            $port = $cloud['ssl'] ? '443' : '80';
+        $consumer = self::get_service_consumer();
+        $token = self::access_token($consumer->usrprefs['refresh_token']);
+        if (!empty($consumer->key) && !empty($consumer->secret)) {
+            $url = $token['user'];
+            $port = $consumer->ssl ? '443' : '80';
             $header = array();
             $header[] = 'User-Agent: SugarSync API PHP Client';
-            $header[] = 'Authorization: ' . $cloud['authurl'] . $accesstoken['access_token'];
+            $header[] = 'Authorization: ' . $consumer->authurl . $token['access_token'];
             $header[] = 'Host: api.sugarsync.com';
             $header[] = 'Content-Type: application/xml; charset=UTF-8';
             $config = array(
@@ -354,7 +359,7 @@ XML;
                 return array(
                     'service_name' => 'sugarsync',
                     'service_auth' => true,
-                    'user_id'      => $accesstoken['userid'],
+                    'user_id'      => $token['userid'],
                     'user_name'    => $data['nickname'],
                     'user_email'   => $data['username'],
                     'space_used'   => bytes_to_size1024(floatval($data['quota']['usage'])),
@@ -388,25 +393,23 @@ XML;
      * SEE: http://www.sugarsync.com/dev/api/method/get-folders.html
      *
      */
-    public function get_filelist($folder_id=0, $selected=array()) {
-        global $USER, $THEME;
+    public function get_filelist($folder_id=0, $selected=array(), $owner=null) {
+        global $THEME;
 
         // Get folder contents...
-        $cloud       = self::cloud_info();
-        $consumer    = self::consumer_tokens();
-        $usertoken   = self::user_tokens($USER->get('id'));
-        $accesstoken = self::access_token($usertoken['refresh_token']);
-        if (!empty($consumer['key']) && !empty($consumer['secret'])) {
+        $consumer = self::get_service_consumer($owner);
+        $token = self::access_token($consumer->usrprefs['refresh_token']);
+        if (!empty($consumer->key) && !empty($consumer->secret)) {
             if (strlen($folder_id) > 1) {
-                $url = $cloud['baseurl'].'folder/'.$folder_id.'/contents';
-            } else {
-                $url = $accesstoken['user'].'/folders/contents';
+                $url = $consumer->baseurl.'folder/'.$folder_id.'/contents';
             }
-            $method = 'GET';
-            $port = $cloud['ssl'] ? '443' : '80';
+            else {
+                $url = $token['user'].'/folders/contents';
+            }
+            $port = $consumer->ssl ? '443' : '80';
             $header = array();
             $header[] = 'User-Agent: SugarSync API PHP Client';
-            $header[] = 'Authorization: ' . $cloud['authurl'] . $accesstoken['access_token'];
+            $header[] = 'Authorization: ' . $consumer->authurl . $token['access_token'];
             $header[] = 'Host: api.sugarsync.com';
             $header[] = 'Content-Type: application/xml; charset=UTF-8';
             $config = array(
@@ -434,7 +437,7 @@ XML;
                             $id = basename($folder['ref']);
                             if (in_array('folder'.$id, $selected)) {
                                 //$type        = 'folder';
-                                $icon        = $THEME->get_url('images/folder.gif');
+                                $icon        = $THEME->get_url('images/folder.png');
                                 $title       = $folder['displayName'];
                                 $description = '';
                                 $size        = bytes_to_size1024($folder['size']);
@@ -449,13 +452,14 @@ XML;
                             $id = basename($file['ref']);
                             if (in_array('file'.$id, $selected)) {
                                 //$type        = 'file';
-                                $icon        = $THEME->get_url('images/file.gif');
+                                $icon        = $THEME->get_url('images/file.png');
                                 $title       = $file['displayName'];
                                 $description = '';
                                 $size        = bytes_to_size1024($file['size']);
                                 if (isset($file['timeCreated'])) {
                                     $created     = format_date(strtotime($file['timeCreated']), 'strftimedaydate');
-                                } else {
+                                }
+                                else {
                                     $created     = format_date(strtotime($file['lastModified']), 'strftimedaydate');
                                 }
                                 $output['files'][] = array('iconsrc' => $icon, 'id' => $id, 'title' => $title, 'description' => $description, 'size' => $size, 'ctime' => $created);
@@ -465,10 +469,12 @@ XML;
                     
                     return $output;
                 }
-            } else {
+            }
+            else {
                 return array();
             }
-         } else {
+        }
+        else {
             throw new ConfigException('Can\'t find SugarSync consumer key and/or consumer secret.');
         }
     }
@@ -492,17 +498,19 @@ XML;
      *
      */
     public function get_folder_content($folder_id=0, $options, $block=0, $fullpath='0|@') {
-        global $USER, $THEME;
+        global $THEME;
         
         // Get selected artefacts (folders and/or files)
         if ($block > 0) {
             $data = unserialize(get_field('block_instance', 'configdata', 'id', $block));
             if (!empty($data) && isset($data['artefacts'])) {
                 $artefacts = $data['artefacts'];
-            } else {
+            }
+            else {
                 $artefacts = array();
             }
-        } else {
+        }
+        else {
             $artefacts = array();
         }
         
@@ -520,12 +528,14 @@ XML;
                 list($current, $path) = explode('|', $fullpath, 2);
                 $_SESSION[self::servicepath] = $current . '|' . $path;
                 $folder_id = $current;
-            } else {
+            }
+            else {
                 // Full path equals path to root folder
                 $_SESSION[self::servicepath] = '0|@';
                 $folder_id = 0;
             }
-        } else {
+        }
+        else {
             if ($folder_id != 'parent') {
                 // Go to child folder...
                 if (strlen($folder_id) > 1) {
@@ -538,7 +548,8 @@ XML;
                 else {
                     $_SESSION[self::servicepath] = '0|@';
                 }
-            } else {
+            }
+            else {
                 // Go to parent folder...
                 if (strlen($_SESSION[self::servicepath]) > 3) {
                     list($current, $parent, $path) = explode('|', $_SESSION[self::servicepath], 3);
@@ -551,21 +562,19 @@ XML;
         list($parent_id, $path) = explode('|', $_SESSION[self::servicepath], 2);
         
         // Get folder contents...
-        $cloud       = self::cloud_info();
-        $consumer    = self::consumer_tokens();
-        $usertoken   = self::user_tokens($USER->get('id'));
-        $accesstoken = self::access_token($usertoken['refresh_token']);
-        if (!empty($consumer['key']) && !empty($consumer['secret'])) {
+        $consumer = self::get_service_consumer();
+        $token = self::access_token($consumer->usrprefs['refresh_token']);
+        if (!empty($consumer->key) && !empty($consumer->secret)) {
             if (strlen($folder_id) > 1) {
-                $url = $cloud['baseurl'].'folder/'.$folder_id.'/contents';
-            } else {
-                $url = $accesstoken['user'].'/folders/contents';
+                $url = $consumer->baseurl.'folder/'.$folder_id.'/contents';
             }
-            $method = 'GET';
-            $port = $cloud['ssl'] ? '443' : '80';
+            else {
+                $url = $token['user'].'/folders/contents';
+            }
+            $port = $consumer->ssl ? '443' : '80';
             $header = array();
             $header[] = 'User-Agent: SugarSync API PHP Client';
-            $header[] = 'Authorization: ' . $cloud['authurl'] . $accesstoken['access_token'];
+            $header[] = 'Authorization: ' . $consumer->authurl . $token['access_token'];
             $header[] = 'Host: api.sugarsync.com';
             $header[] = 'Content-Type: application/xml; charset=UTF-8';
             $config = array(
@@ -589,7 +598,7 @@ XML;
                     if (strlen($_SESSION[self::servicepath]) > 3) {
                         $type        = 'parentfolder';
                         $foldername  = get_string('parentfolder', 'artefact.file');
-                        $title       = '<a class="changefolder" href="javascript:void(0)" id="parent" title="' . get_string('gotofolder', 'artefact.file', $foldername) . '"><img src="' . get_config('wwwroot') . 'artefact/cloud/theme/raw/static/images/parentfolder.png"></a>';
+                        $title       = '<a class="changefolder" href="javascript:void(0)" id="parent" title="' . get_string('gotofolder', 'artefact.file', $foldername) . '"><img src="' . $THEME->get_url('images/parentfolder.png') . '"></a>';
                         $output['aaData'][] = array('', $title, '', $type);
                     }
                     if ($showFolders && isset($data['collection']) && !empty($data['collection'])) {
@@ -597,12 +606,13 @@ XML;
                         foreach ($folders as $folder) {
                             $id          = basename($folder['ref']);
                             $type        = 'folder';
-                            $icon        = '<img src="' . $THEME->get_url('images/folder.gif') . '">';
+                            $icon        = '<img src="' . $THEME->get_url('images/folder.png') . '">';
                             $title       = '<a class="changefolder" href="javascript:void(0)" id="' . $id . '" title="' . get_string('gotofolder', 'artefact.file', $folder['displayName']) . '">' . $folder['displayName'] . '</a>';
                             if ($selectFolders) {
                                 $selected = (in_array('folder'.$id, $artefacts) ? ' checked' : '');
                                 $controls = '<input type="' . ($selectMultiple ? 'checkbox' : 'radio') . '" name="artefacts[]" id="artefacts[]" value="folder' . $id . '"' . $selected . '>';
-                            } else {
+                            }
+                            else {
                                 $controls = '';
                             }
                             $output['aaData'][] = array($icon, $title, $controls, $type);
@@ -614,15 +624,19 @@ XML;
                         foreach ($files as $file) {
                             $id          = basename($file['ref']);
                             $type        = 'file';
-                            $icon        = '<img src="' . $THEME->get_url('images/file.gif') . '">';
-                            $title       = '<a class="filedetails" href="details.php?id=' . $id . '" title="' . get_string('filedetails', 'artefact.cloud', $file['displayName']) . '">' . $file['displayName'] . '</a>';
+                            $icon        = '<img src="' . $THEME->get_url('images/file.png') . '">';
+                            $title       = '<a class="filedetails" href="' . get_config('wwwroot') . 'artefact/cloud/blocktype/sugarsync/details.php?id=' . $id . '" title="' . get_string('filedetails', 'artefact.cloud', $file['displayName']) . '">' . $file['displayName'] . '</a>';
                             if ($selectFiles && !$manageButtons) {
                                 $selected = (in_array('file'.$id, $artefacts) ? ' checked' : '');
                                 $controls = '<input type="' . ($selectMultiple ? 'checkbox' : 'radio') . '" name="artefacts[]" id="artefacts[]" value="file' . $id . '"' . $selected . '>';
-                            } elseif ($manageButtons) {
-                                $controls  = '<a class="btn" href="download.php?id=' . $id . '&save=1">' . get_string('save', 'artefact.cloud') . '</a>';
-                                $controls .= '<a class="btn" href="download.php?id=' . $id . '">' . get_string('download', 'artefact.cloud') . '</a>';
-                            } else {
+                            }
+                            elseif ($manageButtons) {
+                                $controls  = '<div class="btns2">';
+                                $controls .= '<a title="' . get_string('save', 'artefact.cloud') . '" href="download.php?id=' . $id . '&save=1"><img src="' . get_config('wwwroot') . 'artefact/cloud/theme/raw/static/images/btn_save.png" alt="' . get_string('save', 'artefact.cloud') . '"></a>';
+                                $controls .= '<a title="' . get_string('download', 'artefact.cloud') . '" href="download.php?id=' . $id . '"><img src="' . get_config('wwwroot') . 'artefact/cloud/theme/raw/static/images/btn_download.png" alt="' . get_string('download', 'artefact.cloud') . '"></a>';
+                                $controls .= '</div>';
+                            }
+                            else {
                                 $controls = '';
                             }
                             $output['aaData'][] = array($icon, $title, $controls, $type);
@@ -634,30 +648,26 @@ XML;
                     
                     return json_encode($output);
                 }
-            } else {
+            }
+            else {
                 return array();
             }
-         } else {
+        }
+        else {
             throw new ConfigException('Can\'t find SugarSync consumer key and/or consumer secret.');
         }
     }
 
-    /*
-     * SEE: http://www.sugarsync.com/dev/api/method/get-folder-info.html
-     */
-    public function get_folder_info($folder_id=0) {
-        global $USER;
-        $cloud       = self::cloud_info();
-        $consumer    = self::consumer_tokens();
-        $usertoken   = self::user_tokens($USER->get('id'));
-        $accesstoken = self::access_token($usertoken['refresh_token']);
-        if (!empty($consumer['key']) && !empty($consumer['secret'])) {
-            $url = $cloud['baseurl'].'folder/'.$folder_id;
-            $method = 'GET';
-            $port = $cloud['ssl'] ? '443' : '80';
+    // SEE: http://www.sugarsync.com/dev/api/method/get-folder-info.html
+    public function get_folder_info($folder_id=0, $owner=null) {
+        $consumer = self::get_service_consumer($owner);
+        $token = self::access_token($consumer->usrprefs['refresh_token']);
+        if (!empty($consumer->key) && !empty($consumer->secret)) {
+            $url = $consumer->baseurl.'folder/'.$folder_id;
+            $port = $consumer->ssl ? '443' : '80';
             $header = array();
             $header[] = 'User-Agent: SugarSync API PHP Client';
-            $header[] = 'Authorization: ' . $cloud['authurl'] . $accesstoken['access_token'];
+            $header[] = 'Authorization: ' . $consumer->authurl . $token['access_token'];
             $header[] = 'Host: api.sugarsync.com';
             $header[] = 'Content-Type: application/xml; charset=UTF-8';
             $config = array(
@@ -683,30 +693,26 @@ XML;
                     'updated'     => '',
                 );
                 return $info;
-            } else {
+            }
+            else {
                 return null;
             }
-         } else {
+        }
+        else {
             throw new ConfigException('Can\'t find SugarSync consumer key and/or consumer secret.');
         }
     }
 
-    /*
-     * SEE: http://www.sugarsync.com/dev/api/method/get-file-info.html
-     */
-    public function get_file_info($file_id=0) {
-        global $USER;
-        $cloud     = self::cloud_info();
-        $consumer  = self::consumer_tokens();
-        $usertoken = self::user_tokens($USER->get('id'));
-        $accesstoken = self::access_token($usertoken['refresh_token']);
-        if (!empty($consumer['key']) && !empty($consumer['secret'])) {
-            $url = $cloud['baseurl'].'file/'.$file_id;
-            $method = 'GET';
-            $port = $cloud['ssl'] ? '443' : '80';
+    // SEE: http://www.sugarsync.com/dev/api/method/get-file-info.html
+    public function get_file_info($file_id=0, $owner=null) {
+        $consumer = self::get_service_consumer($owner);
+        $token = self::access_token($consumer->usrprefs['refresh_token']);
+        if (!empty($consumer->key) && !empty($consumer->secret)) {
+            $url = $consumer->baseurl.'file/'.$file_id;
+            $port = $consumer->ssl ? '443' : '80';
             $header = array();
             $header[] = 'User-Agent: SugarSync API PHP Client';
-            $header[] = 'Authorization: ' . $cloud['authurl'] . $accesstoken['access_token'];
+            $header[] = 'Authorization: ' . $consumer->authurl . $token['access_token'];
             $header[] = 'Host: api.sugarsync.com';
             $header[] = 'Content-Type: application/xml; charset=UTF-8';
             $config = array(
@@ -736,35 +742,31 @@ XML;
                     'parent'      => basename($data['parent']),
                 );
                 return $info;
-            } else {
+            }
+            else {
                 return null;
             }
-         } else {
+        }
+        else {
             throw new ConfigException('Can\'t find SugarSync consumer key and/or consumer secret.');
         }
     }
 
-    /*
-     * SEE: http://www.sugarsync.com/dev/api/method/get-file-data.html
-     * SEE: http://www.sugarsync.com/dev/download-file-example.html
-     */
-    public function download_file($file_id=0) {
-        global $USER;
-        $cloud       = self::cloud_info();
-        $consumer    = self::consumer_tokens();
-        $usertoken   = self::user_tokens($USER->get('id'));
-        $accesstoken = self::access_token($usertoken['refresh_token']);
-
-        if (!empty($consumer['key']) && !empty($consumer['secret'])) {
+    // SEE: http://www.sugarsync.com/dev/api/method/get-file-data.html
+    // SEE: http://www.sugarsync.com/dev/download-file-example.html
+    public function download_file($file_id=0, $owner=null) {
+        $consumer = self::get_service_consumer($owner);
+        $token = self::access_token($consumer->usrprefs['refresh_token']);
+        if (!empty($consumer->key) && !empty($consumer->secret)) {
             // Construct download, to download file...
             // e.g.: https://api.sugarsync.com/file/<file_id>/data
-            $download_url = $cloud['baseurl'] . 'file/' . $file_id . '/data';
+            $download_url = $consumer->baseurl . 'file/' . $file_id . '/data';
             
             $result = '';
             $header[] = 'User-Agent: SugarSync API PHP Client';
-            $header[] = 'Authorization: ' . $cloud['authurl'] . $accesstoken['access_token'];
+            $header[] = 'Authorization: ' . $consumer->authurl . $token['access_token'];
             $header[] = 'Host: api.sugarsync.com';
-            $port = $cloud['ssl'] ? '443' : '80';
+            $port = $consumer->ssl ? '443' : '80';
             
             $ch = curl_init($download_url);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -776,12 +778,13 @@ XML;
             $result = curl_exec($ch);
             curl_close($ch);
             return $result;
-         } else {
+        }
+        else {
             throw new ConfigException('Can\'t find SugarSync consumer key and/or consumer secret.');
         }
     }
 
-    public function embed_file($file_id=0, $options=array()) {
+    public function embed_file($file_id=0, $options=array(), $owner=null) {
         // SugarSync API doesn't support embedding of files, so:
         // Nothing to do!
     }

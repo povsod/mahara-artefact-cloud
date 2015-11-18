@@ -1,27 +1,11 @@
 <?php
 /**
- * Mahara: Electronic portfolio, weblog, resume builder and social networking
- * Copyright (C) 2006-2012 Catalyst IT Ltd and others; see:
- *                         http://wiki.mahara.org/Contributors
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * @package    mahara
  * @subpackage blocktype-box
  * @author     Gregor Anzelj
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2012 Gregor Anzelj, gregor.anzelj@gmail.com
+ * @copyright  (C) 2012-2015 Gregor Anzelj, gregor.anzelj@gmail.com
  *
  */
 
@@ -33,8 +17,6 @@ require_once(get_config('docroot') . 'artefact/cloud/lib/oauth.php');
 
 class PluginBlocktypeBox extends PluginBlocktypeCloud {
 
-    const servicepath = 'boxpath';
-    
     public static function get_title() {
         return get_string('title', 'blocktype.cloud/box');
     }
@@ -44,47 +26,41 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
     }
 
     public static function get_categories() {
-        return array('cloud');
-    }
-
-    public static function get_instance_config_javascript() {
-        return array('js/configform.js');
+        return array('external');
     }
 
     public static function render_instance(BlockInstance $instance, $editing=false) {
         $configdata = $instance->get('configdata');
         $viewid     = $instance->get('view');
         
-        $fullpath = (!empty($configdata['fullpath']) ? $configdata['fullpath'] : '0|@');
+        $view = new View($viewid);
+        $ownerid = $view->get('owner');
+
         $selected = (!empty($configdata['artefacts']) ? $configdata['artefacts'] : array());
         $display  = (!empty($configdata['display']) ? $configdata['display'] : 'list');
         $width    = (!empty($configdata['width']) ? $configdata['width'] : 466);
         $height   = (!empty($configdata['height']) ? $configdata['height'] : 400);
-        $allowed  = (!empty($configdata['allowed']) ? $configdata['allowed'] : array());
         
         $smarty = smarty_core();
         switch ($display) {
             case 'embed':
                 $html = '';
                 $options = array(
-                    'width'          => $width,
-                    'height'         => $height,
-                    'allow_download' => (in_array('download', $allowed) ? 1 : 0),
-                    'allow_print'    => (in_array('print', $allowed) ? 1 : 0),
-                    'allow_share'    => (in_array('share', $allowed) ? 1 : 0)
+                    'width'  => $width,
+                    'height' => $height,
                 );
                 if (!empty($selected)) {
                     foreach ($selected as $artefact) {
-                        list($type, $id) = explode('-', $artefact);
-                        $html .= self::embed_file($id, $options);
+                        $html .= self::embed_file($artefact, $options);
                     }
                 }
                 $smarty->assign('embed', $html);
                 break;
             case 'list':
             default:
-                list($folder, $path) = explode('|', $fullpath, 2);
-                $data = self::get_filelist($folder, $selected);
+				$file = self::get_file_info($selected[0]);
+				$folder = $file['parent_id'];
+                $data = self::get_filelist($folder, $selected, $ownerid);
                 $smarty->assign('folders', $data['folders']);
                 $smarty->assign('files', $data['files']);
         }
@@ -102,81 +78,91 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
         $allowed = (!empty($configdata['allowed']) ? $configdata['allowed'] : array());
         safe_require('artefact', 'cloud');
         $instance->set('artefactplugin', 'cloud');
+        $viewid = $instance->get('view');
+
+        $view = new View($viewid);
+        $ownerid = $view->get('owner');
         
-        return array(
-            'boxfiles' => array(
-                'type'     => 'datatables',
-                'title'    => get_string('selectfiles','blocktype.cloud/box'),
-                'service'  => 'box',
-                'block'    => $instanceid,
-                'fullpath' => (isset($configdata['fullpath']) ? $configdata['fullpath'] : null),
-                'options'  => array(
-                    'showFolders'    => true,
-                    'showFiles'      => true,
-                    'selectFolders'  => false,
-                    'selectFiles'    => true,
-                    'selectMultiple' => true
+        $data = ArtefactTypeCloud::get_user_preferences('box', $ownerid);
+        if ($data) {
+            return array(
+                'boxlogo' => array(
+                    'type' => 'html',
+                    'value' => '<img src="' . get_config('wwwroot') . 'artefact/cloud/blocktype/box/theme/raw/static/images/logo.png">',
                 ),
-            ),
-            'display' => array(
-                'type' => 'radio',
-                'title' => get_string('display','blocktype.cloud/box'),
-                'description' => get_string('displaydesc','blocktype.cloud/box'),
-                'defaultvalue' => (!empty($configdata['display']) ? hsc($configdata['display']) : 'list'),
-                'options' => array(
-                    'list'  => get_string('displaylist','blocktype.cloud/box'),
-                    'embed' => get_string('displayembed','blocktype.cloud/box')
+                'boxisconnect' => array(
+                    'type' => 'cancel',
+                    'value' => get_string('revokeconnection', 'blocktype.cloud/box'),
+                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/box/account.php?action=logout',
                 ),
-                'separator' => '<br />',
-            ),
-            'embedoptions' => array(
-                'type'         => 'fieldset',
-                'collapsible'  => true,
-                'collapsed'    => true,
-                'legend'       => get_string('embedoptions', 'blocktype.cloud/box'),
-                'elements'     => array(
-                    'width' => array(
-                        'type'  => 'text',
-                        'labelhtml' => get_string('width', 'blocktype.cloud/box'),
-                        'size' => 3,
-                        'defaultvalue' => (!empty($configdata['width']) ? hsc($configdata['width']) : 466),
-                        'rules' => array('minvalue' => 1, 'maxvalue' => 2000),
+                'boxpath' => array(
+				    'type'  => 'hidden',
+					'value' => '0',
+				),
+                'boxfiles' => array(
+                    'type'     => 'datatables',
+                    'title'    => get_string('selectfiles','blocktype.cloud/box'),
+                    'service'  => 'box',
+                    'block'    => $instanceid,
+                    'options'  => array(
+                        'showFolders'    => true,
+                        'showFiles'      => true,
+                        'selectFolders'  => false,
+                        'selectFiles'    => true,
+                        'selectMultiple' => true
                     ),
-                    'height' => array(
-                        'type'  => 'text',
-                        'labelhtml' => get_string('height', 'blocktype.cloud/box'),
-                        'size' => 3,
-                        'defaultvalue' => (!empty($configdata['height']) ? hsc($configdata['height']) : 400),
-                        'rules' => array('minvalue' => 1, 'maxvalue' => 2000),
+                ),
+                'display' => array(
+                    'type' => 'radio',
+                    'title' => get_string('display','blocktype.cloud/box'),
+                    'description' => get_string('displaydesc','blocktype.cloud/box'),
+                    'defaultvalue' => (!empty($configdata['display']) ? hsc($configdata['display']) : 'list'),
+                    'options' => array(
+                        'list'  => get_string('displaylist','blocktype.cloud/box'),
+                        'embed' => get_string('displayembed','blocktype.cloud/box')
                     ),
-                    'allowed' => array(
-                        'type'  => 'checkboxes',
-                        'labelhtml' => get_string('allow', 'blocktype.cloud/box'),
-                        'elements' => array(
-                            array(
-                                'value' => 'download',
-                                'title' => get_string('allowdownload', 'blocktype.cloud/box'),
-                                'defaultvalue' => (in_array('download', $allowed) ? 'checked' : '')
-                            ),
-                            array(
-                                'value' => 'print',
-                                'title' => get_string('allowprint', 'blocktype.cloud/box'),
-                                'defaultvalue' => (in_array('print', $allowed) ? 'checked' : '')
-                            ),
-                            array(
-                                'value' => 'share',
-                                'title' => get_string('allowshare', 'blocktype.cloud/box'),
-                                'defaultvalue' => (in_array('share', $allowed) ? 'checked' : '')
-                            ),
+                    'separator' => '<br />',
+                ),
+                'embedoptions' => array(
+                    'type'         => 'fieldset',
+                    'collapsible'  => true,
+                    'collapsed'    => true,
+                    'legend'       => get_string('embedoptions', 'blocktype.cloud/box'),
+                    'elements'     => array(
+                        'width' => array(
+                            'type'  => 'text',
+                            'labelhtml' => get_string('width', 'blocktype.cloud/box'),
+                            'size' => 3,
+                            'defaultvalue' => (!empty($configdata['width']) ? hsc($configdata['width']) : 466),
+                            'rules' => array('minvalue' => 1, 'maxvalue' => 2000),
+                        ),
+                        'height' => array(
+                            'type'  => 'text',
+                            'labelhtml' => get_string('height', 'blocktype.cloud/box'),
+                            'size' => 3,
+                            'defaultvalue' => (!empty($configdata['height']) ? hsc($configdata['height']) : 400),
+                            'rules' => array('minvalue' => 1, 'maxvalue' => 2000),
                         ),
                     ),
                 ),
-            ),
-        );
+            );
+        }
+        else {
+            return array(
+                'boxlogo' => array(
+                    'type' => 'html',
+                    'value' => '<img src="' . get_config('wwwroot') . 'artefact/cloud/blocktype/box/theme/raw/static/images/logo.png">',
+                ),
+                'boxisconnect' => array(
+                    'type' => 'cancel',
+                    'value' => get_string('connecttobox', 'blocktype.cloud/box'),
+                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/box/account.php?action=login',
+                ),
+            );
+        }
     }
 
     public static function instance_config_save($values) {
-        global $_SESSION;
         // Folder and file IDs (and other values) are returned as JSON/jQuery serialized string.
         // We have to parse that string and urldecode it (to correctly convert square brackets)
         // in order to get cloud folder and file IDs - they are stored in $artefacts array.
@@ -187,12 +173,10 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
         
         $values = array(
             'title'     => $values['title'],
-            'fullpath'  => $_SESSION[self::servicepath],
             'artefacts' => $artefacts,
             'display'   => $values['display'],
             'width'     => $values['width'],
             'height'    => $values['height'],
-            'allowed'   => $values['allowed'],
         );
         return $values;
     }
@@ -210,6 +194,7 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
     }
 
     public static function get_config_options() {
+        $consumer = self::get_service_consumer();
         $elements = array();
         $elements['applicationdesc'] = array(
             'type'  => 'html',
@@ -248,7 +233,6 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
                     'size' => 40,
                     'rules' => array('required' => true),
                 ),
-                /*
                 'consumersecret' => array(
                     'type'         => 'text',
                     'title'        => get_string('consumersecret', 'blocktype.cloud/box'),
@@ -257,11 +241,10 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
                     'size' => 40,
                     'rules' => array('required' => true),
                 ),
-                */
                 'redirecturl' => array(
-                    'type'         => 'text',
+                    'type'         => 'html',
                     'title'        => get_string('redirecturl', 'blocktype.cloud/box'),
-                    'defaultvalue' => get_config('wwwroot') . 'artefact/cloud/blocktype/box/callback.php',
+                    'value'        => $consumer->callback,
                     'description'  => get_string('redirecturldesc', 'blocktype.cloud/box'),
                     'size'         => 70,
                     'readonly'     => true,
@@ -284,9 +267,9 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
 
     }
 
-    public static function save_config_options($values) {
+    public static function save_config_options($form, $values) {
         set_config_plugin('blocktype', 'box', 'consumerkey', $values['consumerkey']);
-        //set_config_plugin('blocktype', 'box', 'consumersecret', $values['consumersecret']);
+        set_config_plugin('blocktype', 'box', 'consumersecret', $values['consumersecret']);
     }
 
     public static function default_copy_type() {
@@ -297,34 +280,33 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
      * Methods & stuff for accessing Box API *
      *****************************************/
     
-    public function cloud_info() {
-        return array(
-            'ssl'        => true,
-            'version'    => '1.0',
-            'baseurl'    => 'https://www.box.net/api/',
-            'contenturl' => 'https://upload.box.net/api/',
-            'wwwurl'     => 'https://www.box.net/api/',
-        );
-    }
-    
-    public function consumer_tokens() {
-        return array(
-            'key'      => get_config_plugin('blocktype', 'box', 'consumerkey'),
-            //'secret'   => get_config_plugin('blocktype', 'box', 'consumersecret'),
-            'callback' => get_config('wwwroot') . 'artefact/cloud/blocktype/box/callback.php'
-        );
-    }
-    
-    public function user_tokens($userid) {
-        return ArtefactTypeCloud::get_user_preferences('box', $userid);
-    }
-    
-    public function service_list() {
+    private function get_service_consumer($owner=null) {
         global $USER;
-        $consumer   = self::consumer_tokens();
-        $usertoken  = self::user_tokens($USER->get('id'));
-        if (!empty($consumer['key'])) {
-            if (isset($usertoken['auth_token']) && !empty($usertoken['auth_token'])) {
+        if (!isset($owner) || is_null($owner)) {
+            $owner = $USER->get('id');
+        }
+        $wwwroot = get_config('wwwroot');
+        $service = new StdClass();
+        $service->ssl        = true;
+        $service->version    = '2.0'; // API Version
+        $service->apiurl     = 'https://api.box.com/';
+        $service->contenturl = 'https://upload.box.com/api/';
+        $service->wwwurl     = 'https://www.box.com/api'; // without trailing slash, since there isn't API version in those URLs
+        $service->key        = get_config_plugin('blocktype', 'box', 'consumerkey');
+        $service->secret     = get_config_plugin('blocktype', 'box', 'consumersecret');
+		// If SSL is set then force SSL URL for callback
+		if ($service->ssl) {
+            $wwwroot = str_replace('http://', 'https://', get_config('wwwroot'));
+		}
+        $service->callback   = $wwwroot . 'artefact/cloud/blocktype/box/callback.php';
+        $service->usrprefs   = ArtefactTypeCloud::get_user_preferences('box', $owner);
+        return $service;
+    }
+
+    public function service_list() {
+        $consumer = self::get_service_consumer();
+        if (!empty($consumer->key)) {
+            if (isset($consumer->usrprefs['access_token']) && !empty($consumer->usrprefs['access_token'])) {
                 return array(
                     'service_name'   => 'box',
                     'service_url'    => 'http://www.box.com',
@@ -342,30 +324,48 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
                 );
             }
         } else {
-            throw new ConfigException('Can\'t find Box consumer key.');
+            throw new ConfigException('Can\'t find Box consumer key and/or consumer secret.');
         }
     }
-    
+
+    // SEE: https://developers.box.com/oauth/
+    // SEE: https://developers.box.com/docs/#oauth-2-authorize
     public function request_token() {
-        global $USER, $SESSION;
-        $cloud    = self::cloud_info();
-        $consumer = self::consumer_tokens();
-        if (!empty($consumer['key'])) {
-            $url = $cloud['baseurl'].$cloud['version'].'/rest';
-            $method = 'POST';
-            $port = $cloud['ssl'] ? '443' : '80';
+        $consumer = self::get_service_consumer();
+        if (!empty($consumer->key) && !empty($consumer->secret)) {
+            $url = $consumer->wwwurl.'/oauth2/authorize';
+            $port = $consumer->ssl ? '443' : '80';
             $params = array(
-                'action'  => 'get_ticket',
-                'api_key' => $consumer['key'],
+                'response_type' => 'code',
+                'client_id' => $consumer->key,
+                'redirect_uri' => $consumer->callback,
             );
-            $header = array();
-            $header[] = build_oauth_header($params, "Box API PHP Client");
-            $header[] = 'Content-Type: application/x-www-form-urlencoded';
+            $query = oauth_http_build_query($params);
+            $request_url = $url . ($query ? ('?' . $query) : '');
+            redirect($request_url);
+        } else {
+            throw new ConfigException('Can\'t find Box consumer key and/or consumer secret.');
+        }
+    }
+
+    // SEE: https://developers.box.com/oauth/
+    // SEE: https://developers.box.com/docs/#oauth-2-token
+    public function access_token($oauth_code) {
+        global $SESSION;
+        $consumer = self::get_service_consumer();
+        if (!empty($consumer->key) && !empty($consumer->secret)) {
+            $url = $consumer->wwwurl.'/oauth2/token';
+            $port = $consumer->ssl ? '443' : '80';
+            $params = array(
+                'grant_type' => 'authorization_code',
+                'code' => $oauth_code,
+                'client_id' => $consumer->key,
+                'client_secret' => $consumer->secret,
+                'redirect_uri' => $consumer->callback,
+            );
             $config = array(
                 CURLOPT_URL => $url,
                 CURLOPT_PORT => $port,
-                CURLOPT_HEADER => true,
-                CURLOPT_HTTPHEADER => $header,
                 CURLOPT_POST => true,
                 CURLOPT_POSTFIELDS => oauth_http_build_query($params),
                 CURLOPT_RETURNTRANSFER => true,
@@ -375,21 +375,64 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
             );
             $result = mahara_http_request($config);
             if ($result->info['http_code'] == 200 && !empty($result->data)) {
-                $data = oauth_parse_xml($result->data);
-                // Get ticket and finnish authentication process
-                $ticket = $data['ticket'];
-                redirect($cloud['baseurl'].$cloud['version'].'/auth/'.$ticket);
-            } else {
-                $SESSION->add_error_msg(get_string('ticketnotreturned', 'blocktype.cloud/box'));
+                $data = json_decode($result->data, true);
+                return $data;
             }
-        } else {
-            throw new ConfigException('Can\'t find Box consumer key.');
+            else {
+                $SESSION->add_error_msg(get_string('accesstokennotreturned', 'blocktype.cloud/box'));
+            }
+        }
+        else {
+            throw new ConfigException('Can\'t find Box consumer key and/or consumer secret.');
         }
     }
 
-    public function access_token($params) {
-        // Web applications don't need to implement this.
-        // This is only needed for desktop applications.
+    // SEE: https://developers.box.com/docs/#oauth-2-token
+    public function check_access_token($owner=null) {
+        global $USER/*, $SESSION*/;
+        $consumer = self::get_service_consumer($owner);
+        if (!empty($consumer->key) && !empty($consumer->secret)) {
+            // Find out when access token actually expires and take away 10 seconds
+            // to avoid access token expiry problems between API calls... 
+            $valid = strtotime($consumer->usrprefs['record_ctime']) + intval($consumer->usrprefs['expires_in']) - 10;
+            $now = time();
+            // If access token is expired, than get new one using refresh token
+            // save it and return it...
+            if ($valid < $now) {
+                $url = $consumer->wwwurl.'/oauth2/token';
+                $port = $consumer->ssl ? '443' : '80';
+                $params = array(
+                    'grant_type' => 'refresh_token',
+                    'refresh_token' => $consumer->usrprefs['refresh_token'],
+                    'client_id' => $consumer->key,
+                    'client_secret' => $consumer->secret,
+                    'redirect_uri' => $consumer->callback,
+                );
+                $config = array(
+                    CURLOPT_URL => $url,
+                    CURLOPT_PORT => $port,
+                    CURLOPT_POST => true,
+                    CURLOPT_POSTFIELDS => oauth_http_build_query($params),
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_SSL_VERIFYHOST => 2,
+                    CURLOPT_SSL_VERIFYPEER => true,
+                    CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
+                );
+                $result = mahara_http_request($config);
+                if ($result->info['http_code'] == 200 && !empty($result->data)) {
+                    $prefs = json_decode($result->data, true);
+                    ArtefactTypeCloud::set_user_preferences('box', $USER->get('id'), $prefs);
+                    return $prefs['access_token'];
+                }
+            }
+            // If access token is not expired, than return it...
+            else {
+                return $consumer->usrprefs['access_token'];
+            }
+        }
+        else {
+            throw new ConfigException('Can\'t find Box consumer key and/or consumer secret.');
+        }
     }
 
     public function delete_token() {
@@ -397,32 +440,21 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
         ArtefactTypeCloud::set_user_preferences('box', $USER->get('id'), null);
     }
     
-    /*
-     * SEE: http://developers.box.net/w/page/12923939/ApiFunction_logout
-     */
+    // SEE: https://developers.box.com/oauth/
+    // SEE: https://developers.box.com/docs/#oauth-2-revoke
     public function revoke_access() {
-        global $USER;
-        $cloud     = self::cloud_info();
-        $consumer  = self::consumer_tokens();
-        $usertoken = self::user_tokens($USER->get('id'));
-        if (!empty($consumer['key'])) {
-            // Programmatially logout (revoke access) user
-            $url = $cloud['baseurl'].$cloud['version'].'/rest';
-            $method = 'POST';
-            $port = $cloud['ssl'] ? '443' : '80';
+        $consumer = self::get_service_consumer();
+        if (!empty($consumer->key) && !empty($consumer->secret)) {
+            $url = $consumer->wwwurl.'/oauth2/revoke';
+            $port = $consumer->ssl ? '443' : '80';
             $params = array(
-                'action'  => 'logout',
-                'api_key' => $consumer['key'],
-                'auth_token' => $usertoken['auth_token'],
+                'client_id' => $consumer->key,
+                'client_secret' => $consumer->secret,
+                'token' => $consumer->usrprefs['access_token'],
             );
-            $header = array();
-            $header[] = build_oauth_header($params, "Box API PHP Client");
-            $header[] = 'Content-Type: application/x-www-form-urlencoded';
             $config = array(
                 CURLOPT_URL => $url,
                 CURLOPT_PORT => $port,
-                CURLOPT_HEADER => true,
-                CURLOPT_HTTPHEADER => $header,
                 CURLOPT_POST => true,
                 CURLOPT_POSTFIELDS => oauth_http_build_query($params),
                 CURLOPT_RETURNTRANSFER => true,
@@ -432,38 +464,22 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
             );
             $result = mahara_http_request($config);
         } else {
-            throw new ConfigException('Can\'t find Box consumer key.');
+            throw new ConfigException('Can\'t find Box consumer key and/or consumer secret.');
         }
     }
     
-    /*
-     * SEE: http://developers.box.net/w/page/12923928/ApiFunction_get_account_info
-     * SEE: http://developers.box.net/w/page/42307455/ApiFunction_get_user_info
-     */
+    // SEE: https://developers.box.com/docs/#users-get-the-current-users-information
     public function account_info() {
-        global $USER;
-        $cloud     = self::cloud_info();
-        $consumer  = self::consumer_tokens();
-        $usertoken = self::user_tokens($USER->get('id'));
-        if (!empty($consumer['key'])) {
-            $url = $cloud['baseurl'].$cloud['version'].'/rest';
-            $method = 'POST';
-            $port = $cloud['ssl'] ? '443' : '80';
-            $params = array(
-                'action'  => 'get_account_info',
-                'api_key' => $consumer['key'],
-                'auth_token' => $usertoken['auth_token'],
-            );
-            $header = array();
-            $header[] = build_oauth_header($params, "Box API PHP Client");
-            $header[] = 'Content-Type: application/x-www-form-urlencoded';
+        $consumer = self::get_service_consumer();
+        $token = self::check_access_token();
+        if (!empty($consumer->key) && !empty($consumer->secret)) {
+            $url = $consumer->apiurl.$consumer->version.'/users/me';
+            $port = $consumer->ssl ? '443' : '80';
             $config = array(
                 CURLOPT_URL => $url,
                 CURLOPT_PORT => $port,
                 CURLOPT_HEADER => true,
-                CURLOPT_HTTPHEADER => $header,
-                CURLOPT_POST => true,
-                CURLOPT_POSTFIELDS => oauth_http_build_query($params),
+                CURLOPT_HTTPHEADER => array('Authorization: Bearer '.$token),
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_SSL_VERIFYHOST => 2,
                 CURLOPT_SSL_VERIFYPEER => true,
@@ -471,43 +487,19 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
             );
             $result = mahara_http_request($config);
             if ($result->info['http_code'] == 200 && !empty($result->data)) {
-                $account = oauth_parse_xml(substr($result->data, $result->info['header_size']));
-                $params2 = array(
-                    'action'  => 'get_user_info',
-                    'api_key' => $consumer['key'],
-                    'auth_token' => $usertoken['auth_token'],
-                    'user_id' => $account['user']['user_id'],
-                );
-                $config2 = array(
-                    CURLOPT_URL => $url,
-                    CURLOPT_PORT => $port,
-                    CURLOPT_HEADER => true,
-                    CURLOPT_HTTPHEADER => $header,
-                    CURLOPT_POST => true,
-                    CURLOPT_POSTFIELDS => oauth_http_build_query($params2),
-                    CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_SSL_VERIFYHOST => 2,
-                    CURLOPT_SSL_VERIFYPEER => true,
-                    CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
-                );
-                $result2 = mahara_http_request($config2);
-                if ($result2->info['http_code'] == 200 && !empty($result2->data)) {
-                    $user = oauth_parse_xml(substr($result2->data, $result2->info['header_size']));
-                    $username = $user['user_name'];
-                } else {
-                    $username = '';
-                }
+                $account = json_decode(substr($result->data, $result->info['header_size']), true);
                 return array(
                     'service_name' => 'box',
                     'service_auth' => true,
-                    'user_id'      => $account['user']['user_id'],
-                    'user_name'    => $username,
-                    'user_email'   => $account['user']['email'],
-                    'space_used'   => bytes_to_size1024(floatval($account['user']['space_used'])),
-                    'space_amount' => bytes_to_size1024(floatval($account['user']['space_amount'])),
-                    'space_ratio'  => number_format((floatval($account['user']['space_used'])/floatval($account['user']['space_amount']))*100, 2),
+                    'user_id'      => $account['id'],
+                    'user_name'    => $account['name'],
+                    'user_email'   => $account['login'],
+                    'space_used'   => bytes_to_size1024(floatval($account['space_used'])),
+                    'space_amount' => bytes_to_size1024(floatval($account['space_amount'])),
+                    'space_ratio'  => number_format((floatval($account['space_used'])/floatval($account['space_amount']))*100, 2),
                 );
-            } else {
+            }
+            else {
                 return array(
                     'service_name' => 'box',
                     'service_auth' => false,
@@ -519,7 +511,8 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
                     'space_ratio'  => null,
                 );
             }
-         } else {
+         }
+         else {
             return array(
                 'service_name' => 'box',
                 'service_auth' => false,
@@ -539,33 +532,23 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
      * $folder_id   integer   ID of the folder (on Cloud Service), which contents we wish to retrieve
      * $output      array     Function returns array, used to generate list of files/folders to show in Mahara view/page
      *
-     * SEE: http://developers.box.net/w/page/12923929/ApiFunction_get_account_tree
+     * SEE: https://developers.box.com/docs/#folders-retrieve-a-folders-items
      *
      */
-    public function get_filelist($folder_id=0, $selected=array()) {
-        global $USER, $THEME;
+    public function get_filelist($folder_id=0, $selected=array(), $owner=null) {
+		global $THEME;
 
         // Get folder contents...
-        $cloud     = self::cloud_info();
-        $consumer  = self::consumer_tokens();
-        $usertoken = self::user_tokens($USER->get('id'));
-        if (!empty($consumer['key'])) {
-            $url = $cloud['baseurl'].$cloud['version'].'/rest';
-            $method = 'GET';
-            $port = $cloud['ssl'] ? '443' : '80';
-            $params = array(
-                'action'  => 'get_account_tree',
-                'api_key' => $consumer['key'],
-                'auth_token' => $usertoken['auth_token'],
-                'folder_id' => $folder_id,
-            );
+        $consumer = self::get_service_consumer($owner);
+        $token = self::check_access_token($owner);
+        if (!empty($consumer->key) && !empty($consumer->secret)) {
+            $url = $consumer->apiurl.$consumer->version.'/folders/'.$folder_id.'/items?fields=size,name,description,created_at';
+            $port = $consumer->ssl ? '443' : '80';
             $config = array(
-                // Add parameters at the end: e.g.: params[]=nozip&params[]=onelevel
-                // Don't add them to $params array or the oauth_http_build_query function will urlencode [ and ] - We don't want that!
-                // Parameter 'nozip' is absolutely crucial! Without it, the response is base64-like encoded, but base64_decode won't work!
-                CURLOPT_URL => $url.'?'.oauth_http_build_query($params).'&params[]=nozip&params[]=onelevel',
+                CURLOPT_URL => $url,
                 CURLOPT_PORT => $port,
-                CURLOPT_POST => false,
+                CURLOPT_HEADER => true,
+                CURLOPT_HTTPHEADER => array('Authorization: Bearer '.$token),
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_SSL_VERIFYHOST => 2,
                 CURLOPT_SSL_VERIFYPEER => true,
@@ -573,71 +556,33 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
             );
             $result = mahara_http_request($config);
             if ($result->info['http_code'] == 200 && !empty($result->data)) {
-                $data = oauth_parse_xml($result->data);
+                $data = json_decode(substr($result->data, $result->info['header_size']));
                 $output = array(
                     'folders' => array(),
                     'files'   => array()
                 );
-                if (isset($data['tree']['folder']['folders']) && !empty($data['tree']['folder']['folders'])) {
-                    $folders = $data['tree']['folder']['folders']['folder'];
-                    foreach ($folders as $folder) {
-                        if (isset($folder['@attributes']) && isset($folder['@attributes']['id'])) {
-                            $id = $folder['@attributes']['id'];
-                            if (in_array('folder-'.$id, $selected)) {
-                                //$type        = 'folder';
-                                $icon        = $THEME->get_url('images/folder.gif');
-                                $title       = $folder['@attributes']['name'];
-                                $description = (isset($folder['@attributes']['description']) ? $folder['@attributes']['description'] : '');
-                                $size        = bytes_to_size1024($folder['@attributes']['size']);
-                                $created     = format_date($folder['@attributes']['created'], 'strftimedaydate');
-                                $output['folders'][] = array('iconsrc' => $icon, 'id' => $id, 'title' => $title, 'description' => $description, 'size' => $size, 'ctime' => $created);
+                if (isset($data->entries) && !empty($data->entries)) {
+                    foreach($data->entries as $artefact) {
+                        if (in_array($artefact->id, $selected)) {
+                            $id          = $artefact->id;
+                            $type        = $artefact->type;
+                            $icon        = $THEME->get_url('images/' . $type . '.png');
+                            $title       = $artefact->name;
+                            $description = $artefact->description;
+                            $size        = bytes_to_size1024($artefact->size);
+                            $created     = ($artefact->created_at ? format_date(strtotime($artefact->created_at), 'strftimedaydate') : null);
+                            if ($type == 'folder') {
+                                $output['folders'][] = array('iconsrc' => $icon, 'id' => $id, 'type' => $type, 'title' => $title, 'description' => $description, 'size' => $size, 'ctime' => $created);
+                            } else {
+                                $output['files'][] = array('iconsrc' => $icon, 'id' => $id, 'type' => $type, 'title' => $title, 'description' => $description, 'size' => $size, 'ctime' => $created);
                             }
-                        } elseif (isset($folder['id'])) {
-                            $id = $folder['id'];
-                            if (in_array('folder-'.$id, $selected)) {
-                                //$type        = 'folder';
-                                $icon        = $THEME->get_url('images/folder.gif');
-                                $title       = $folder['name'];
-                                $description = (isset($folder['description']) ? $folder['description'] : '');
-                                $size        = bytes_to_size1024($folder['size']);
-                                $created     = format_date($folder['created'], 'strftimedaydate');
-                                $output['folders'][] = array('iconsrc' => $icon, 'id' => $id, 'title' => $title, 'description' => $description, 'size' => $size, 'ctime' => $created);
-                            }
-                        } else { }
+                        }
                     }
-                }
-                if (isset($data['tree']['folder']['files']) && !empty($data['tree']['folder']['files'])) {
-                    $files = $data['tree']['folder']['files']['file'];
-                    foreach ($files as $file) {
-                        if (isset($file['@attributes']) && isset($file['@attributes']['id'])) {
-                            $id = $file['@attributes']['id'];
-                            if (in_array('file-'.$id, $selected)) {
-                                //$type        = 'file';
-                                $icon        = $THEME->get_url('images/file.gif');
-                                $title       = $file['@attributes']['file_name'];
-                                $description = (isset($file['@attributes']['description']) ? $file['@attributes']['description'] : '');
-                                $size        = bytes_to_size1024($file['@attributes']['size']);
-                                $created     = format_date($file['@attributes']['created'], 'strftimedaydate');
-                                $output['files'][] = array('iconsrc' => $icon, 'id' => $id, 'title' => $title, 'description' => $description, 'size' => $size, 'ctime' => $created);
-                            }
-                        } elseif (isset($file['id'])) {
-                            $id = $file['id'];
-                            if (in_array('file-'.$id, $selected)) {
-                                //$type        = 'file';
-                                $icon        = $THEME->get_url('images/file.gif');
-                                $title       = $file['file_name'];
-                                $description = (isset($file['description']) ? $file['description'] : '');
-                                $size        = bytes_to_size1024($file['size']);
-                                $created     = format_date($file['created'], 'strftimedaydate');
-                                $output['files'][] = array('iconsrc' => $icon, 'id' => $id, 'title' => $title, 'description' => $description, 'size' => $size, 'ctime' => $created);
-                            }
-                        } else { }
-                    }
-                }
+                }                    
                 return $output;
             }
         } else {
-            throw new ConfigException('Can\'t find Box consumer key.');
+            throw new ConfigException('Can\'t find Box consumer key and/or consumer secret.');
         }
     }
 
@@ -648,17 +593,17 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
      * $folder_id   integer   ID of the folder (on Cloud Service), which contents we wish to retrieve
      * $options     integer   List of 6 integers (booleans) to indicate (for all 6 options) if option is used or not
      * $block       integer   ID of the block in given Mahara view/page
-     * $fullpath    string    Fullpath to the folder (on Cloud Service), last opened by user
      *
      * $output      array     Function returns JSON encoded array of values that is suitable to feed jQuery Datatables with.
                               jQuery Datatable than draw an enriched HTML table according to values, contained in $output.
      * PLEASE NOTE: For jQuery Datatable to work, the $output array must be properly formatted and JSON encoded.
      *              Please see: http://datatables.net/usage/server-side (Reply from the server)!
      *
-     * SEE: http://developers.box.net/w/page/12923929/ApiFunction_get_account_tree
+	 * SEE: https://developers.box.com/docs/#folders-get-information-about-a-folder
+     * SEE: https://developers.box.com/docs/#folders-retrieve-a-folders-items
      */
-    public function get_folder_content($folder_id=0, $options, $block=0, $fullpath='0|@') {
-        global $USER, $THEME;
+    public function get_folder_content($folder_id=0, $options, $block=0) {
+        global $THEME;
         
         // Get selected artefacts (folders and/or files)
         if ($block > 0) {
@@ -680,63 +625,25 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
         $selectFiles    = (boolean) $options[4];
         $selectMultiple = (boolean) $options[5];
 
-        // Set/get return path...
-        if ($folder_id == 'init') {
-            if (strlen($fullpath) > 3) {
-                list($current, $path) = explode('|', $fullpath, 2);
-                $_SESSION[self::servicepath] = $current . '|' . $path;
-                $folder_id = $current;
-            } else {
-                // Full path equals path to root folder
-                $_SESSION[self::servicepath] = '0|@';
-                $folder_id = 0;
-            }
-        } else {
-            if ($folder_id != 'parent') {
-                // Go to child folder...
-                if (intval($folder_id) > 0) {
-                    list($current, $path) = explode('|', $_SESSION[self::servicepath], 2);
-                    if (intval($current) != intval($folder_id)) {
-                        $_SESSION[self::servicepath] = $folder_id . '|' . $_SESSION[self::servicepath];
-                    }
-                }
-                // Go to root folder...
-                else {
-                    $_SESSION[self::servicepath] = '0|@';
-                }
-            } else {
-                // Go to parent folder...
-                if (strlen($_SESSION[self::servicepath]) > 3) {
-                    list($current, $parent, $path) = explode('|', $_SESSION[self::servicepath], 3);
-                    $_SESSION[self::servicepath] = $parent . '|' . $path;
-                    $folder_id = $parent;
-                }
-            }
-        }
         
-        list($parent_id, $path) = explode('|', $_SESSION[self::servicepath], 2);
-        
-        // Get folder contents...
-        $cloud     = self::cloud_info();
-        $consumer  = self::consumer_tokens();
-        $usertoken = self::user_tokens($USER->get('id'));
-        if (!empty($consumer['key'])) {
-            $url = $cloud['baseurl'].$cloud['version'].'/rest';
-            $method = 'GET';
-            $port = $cloud['ssl'] ? '443' : '80';
-            $params = array(
-                'action'  => 'get_account_tree',
-                'api_key' => $consumer['key'],
-                'auth_token' => $usertoken['auth_token'],
-                'folder_id' => $folder_id,
-            );
+        // Get folder parent...
+		$parent_id = 0; // either 'root' folder itself or parent is 'root' folder
+		$folder = self::get_folder_info($folder_id);
+		if (!empty($folder['parent_id'])) {
+			$parent_id = $folder['parent_id'];
+		}
+
+		// Get folder contents...
+        $consumer = self::get_service_consumer();
+        $token = self::check_access_token();
+        if (!empty($consumer->key) && !empty($consumer->secret)) {
+            $url = $consumer->apiurl.$consumer->version.'/folders/'.$folder_id.'/items';
+            $port = $consumer->ssl ? '443' : '80';
             $config = array(
-                // Add parameters at the end: e.g.: params[]=nozip&params[]=onelevel
-                // Don't add them to $params array or the oauth_http_build_query function will urlencode [ and ] - We don't want that!
-                // Parameter 'nozip' is absolutely crucial! Without it, the response is base64-like encoded, but base64_decode won't work!
-                CURLOPT_URL => $url.'?'.oauth_http_build_query($params).'&params[]=nozip&params[]=onelevel',
+                CURLOPT_URL => $url,
                 CURLOPT_PORT => $port,
-                CURLOPT_POST => false,
+                CURLOPT_HEADER => true,
+                CURLOPT_HTTPHEADER => array('Authorization: Bearer '.$token),
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_SSL_VERIFYHOST => 2,
                 CURLOPT_SSL_VERIFYPEER => true,
@@ -744,314 +651,74 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
             );
             $result = mahara_http_request($config);
             if ($result->info['http_code'] == 200 && !empty($result->data)) {
-                $data = oauth_parse_xml($result->data);
+                $data = json_decode(substr($result->data, $result->info['header_size']));
                 $output = array();
                 $count = 0;
                 // Add 'parent' row entry to jQuery Datatable...
-                if (strlen($_SESSION[self::servicepath]) > 3) {
+                if ($folder_id > 0) {
                     $type        = 'parentfolder';
                     $foldername  = get_string('parentfolder', 'artefact.file');
-                    $title       = '<a class="changefolder" href="javascript:void(0)" id="parent" title="' . get_string('gotofolder', 'artefact.file', $foldername) . '"><img src="' . get_config('wwwroot') . 'artefact/cloud/theme/raw/static/images/parentfolder.png"></a>';
+                    $title       = '<a class="changefolder" href="javascript:void(0)" id="' . $parent_id . '" title="' . get_string('gotofolder', 'artefact.file', $foldername) . '"><img src="' . $THEME->get_url('images/parentfolder.png') . '"></a>';
                     $output['aaData'][] = array('', $title, '', $type);
                 }
-                if ($showFolders && isset($data['tree']['folder']['folders']) && !empty($data['tree']['folder']['folders'])) {
-                    $folders = $data['tree']['folder']['folders']['folder'];
-                    foreach ($folders as $folder) {
-                        if (isset($folder['@attributes']) && isset($folder['@attributes']['id'])) {
-                            $id          = $folder['@attributes']['id'];
-                            $type        = 'folder';
-                            $icon        = '<img src="' . $THEME->get_url('images/folder.gif') . '">';
-                            $title       = '<a class="changefolder" href="javascript:void(0)" id="' . $id . '" title="' . get_string('gotofolder', 'artefact.file', $folder['@attributes']['name']) . '">' . $folder['@attributes']['name'] . '</a>';
+                if (!empty($data->entries)) {
+				    $detailspath = get_config('wwwroot') . 'artefact/cloud/blocktype/box/details.php';
+                    foreach($data->entries as $artefact) {
+                        $id           = $artefact->id;
+                        $type         = $artefact->type;
+                        $icon         = '<img src="' . $THEME->get_url('images/' . $type . '.png') . '">';
+                        $artefactname = $artefact->name;
+                        if ($artefact->type == 'folder') {
+                            $title    = '<a class="changefolder" href="javascript:void(0)" id="' . $id . '" title="' . get_string('gotofolder', 'artefact.file', $artefactname) . '">' . $artefactname . '</a>';
+                        }
+                        else {
+                            $title    = '<a class="filedetails" href="' . $detailspath . '?id=' . $id . '" title="' . get_string('filedetails', 'artefact.cloud', $artefactname) . '">' . $artefactname . '</a>';
+                        }
+                        $controls = '';
+                        $selected = (in_array(''.$id, $artefacts) ? ' checked' : '');
+                        if ($artefact->type == 'folder') {
                             if ($selectFolders) {
-                                $selected = (in_array('folder-'.$id, $artefacts) ? ' checked' : '');
-                                $controls = '<input type="' . ($selectMultiple ? 'checkbox' : 'radio') . '" name="artefacts[]" id="artefacts[]" value="folder-' . $id . '"' . $selected . '>';
-                            } else {
-                                $controls = '';
+                                $controls = '<input type="' . ($selectMultiple ? 'checkbox' : 'radio') . '" name="artefacts[]" id="artefacts[]" value="' . $id . '"' . $selected . '>';
                             }
-                            $output['aaData'][] = array($icon, $title, $controls, $type);
-                            $count++;
-                        } elseif (isset($folder['id'])) {
-                            $id          = $folder['id'];
-                            $type        = 'folder';
-                            $icon        = '<img src="' . $THEME->get_url('images/folder.gif') . '">';
-                            $title       = '<a class="changefolder" href="javascript:void(0)" id="' . $id . '" title="' . get_string('gotofolder', 'artefact.file', $folder['name']) . '">' . $folder['name'] . '</a>';
-                            if ($selectFolders) {
-                                $selected = (in_array('folder-'.$id, $artefacts) ? ' checked' : '');
-                                $controls = '<input type="' . ($selectMultiple ? 'checkbox' : 'radio') . '" name="artefacts[]" id="artefacts[]" value="folder-' . $id . '"' . $selected . '>';
-                            } else {
-                                $controls = '';
-                            }
-                            $output['aaData'][] = array($icon, $title, $controls, $type);
-                            $count++;
-                        } else { }
-                    }
-                }
-                if ($showFiles && isset($data['tree']['folder']['files']) && !empty($data['tree']['folder']['files'])) {
-                    $files = $data['tree']['folder']['files']['file'];
-                    foreach ($files as $file) {
-                        if (isset($file['@attributes']) && isset($file['@attributes']['id'])) {
-                            $id          = $file['@attributes']['id'];
-                            $type        = 'file';
-                            $icon        = '<img src="' . $THEME->get_url('images/file.gif') . '">';
-                            $title       = '<a class="filedetails" href="details.php?id=' . $id . '" title="' . get_string('filedetails', 'artefact.cloud', $file['@attributes']['file_name']) . '">' . $file['@attributes']['file_name'] . '</a>';
+                        }
+                        else {
                             if ($selectFiles && !$manageButtons) {
-                                $selected = (in_array('file-'.$id, $artefacts) ? ' checked' : '');
-                                $controls = '<input type="' . ($selectMultiple ? 'checkbox' : 'radio') . '" name="artefacts[]" id="artefacts[]" value="file-' . $id . '"' . $selected . '>';
-                            } elseif ($manageButtons) {
-                                $controls  = '<a class="btn" href="preview.php?id=' . $id . '" target="_blank">' . get_string('preview', 'artefact.cloud') . '</a>';
-                                $controls .= '<a class="btn" href="download.php?id=' . $id . '&save=1">' . get_string('save', 'artefact.cloud') . '</a>';
-                                $controls .= '<a class="btn" href="download.php?id=' . $id . '">' . get_string('download', 'artefact.cloud') . '</a>';
-                            } else {
-                                $controls = '';
+                                $controls = '<input type="' . ($selectMultiple ? 'checkbox' : 'radio') . '" name="artefacts[]" id="artefacts[]" value="' . $id . '"' . $selected . '>';
                             }
-                            $output['aaData'][] = array($icon, $title, $controls, $type);
-                            $count++;
-                        } elseif (isset($file['id'])) {
-                            $id          = $file['id'];
-                            $type        = 'file';
-                            $icon        = '<img src="' . $THEME->get_url('images/file.gif') . '">';
-                            $title       = '<a class="filedetails" href="details.php?id=' . $id . '" title="' . get_string('filedetails', 'artefact.cloud', $file['file_name']) . '">' . $file['file_name'] . '</a>';
-                            if ($selectFiles && !$manageButtons) {
-                                $selected = (in_array('file-'.$id, $artefacts) ? ' checked' : '');
-                                $controls = '<input type="' . ($selectMultiple ? 'checkbox' : 'radio') . '" name="artefacts[]" id="artefacts[]" value="file-' . $id . '"' . $selected . '>';
-                            } elseif ($manageButtons) {
-                                $controls  = '<a class="btn" href="preview.php?id=' . $id . '" target="_blank">' . get_string('preview', 'artefact.cloud') . '</a>';
-                                $controls .= '<a class="btn" href="download.php?id=' . $id . '&save=1">' . get_string('save', 'artefact.cloud') . '</a>';
-                                $controls .= '<a class="btn" href="download.php?id=' . $id . '">' . get_string('download', 'artefact.cloud') . '</a>';
-                            } else {
-                                $controls = '';
+                            elseif ($manageButtons) {
+                                $controls  = '<div class="btns3">';
+                                $controls .= '<a title="' . get_string('preview', 'artefact.cloud') . '" href="preview.php?id=' . $id . '" target="_blank"><img src="' . get_config('wwwroot') . 'artefact/cloud/theme/raw/static/images/btn_preview.png" alt="' . get_string('preview', 'artefact.cloud') . '"></a>';
+                                $controls .= '<a title="' . get_string('save', 'artefact.cloud') . '" href="download.php?id=' . $id . '&save=1"><img src="' . get_config('wwwroot') . 'artefact/cloud/theme/raw/static/images/btn_save.png" alt="' . get_string('save', 'artefact.cloud') . '"></a>';
+                                $controls .= '<a title="' . get_string('download', 'artefact.cloud') . '" href="download.php?id=' . $id . '"><img src="' . get_config('wwwroot') . 'artefact/cloud/theme/raw/static/images/btn_download.png" alt="' . get_string('download', 'artefact.cloud') . '"></a>';
+                                $controls .= '</div>';
                             }
-                            $output['aaData'][] = array($icon, $title, $controls, $type);
-                            $count++;
-                        } else { }
+                        }
+                        $output['aaData'][] = array($icon, $title, $controls, $type);
+                        $count++;
                     }
                 }
                 $output['iTotalRecords'] = $count;
                 $output['iTotalDisplayRecords'] = $count;
                 return json_encode($output);
             }
-         } else {
-            throw new ConfigException('Can\'t find Box consumer key.');
+        }
+        else {
+            throw new ConfigException('Can\'t find Box consumer key and/or consumer secret.');
         }
     }
 
-    /*
-     * SEE: http://developers.box.net/w/page/12923929/ApiFunction_get_account_tree
-     */
-    public function get_folder_info($folder_id=0) {
-        global $USER;
-        $cloud     = self::cloud_info();
-        $consumer  = self::consumer_tokens();
-        $usertoken = self::user_tokens($USER->get('id'));
-        if (!empty($consumer['key'])) {
-            $url = $cloud['baseurl'].$cloud['version'].'/rest';
-            $method = 'GET';
-            $port = $cloud['ssl'] ? '443' : '80';
-            $params = array(
-                'action'  => 'get_account_tree',
-                'api_key' => $consumer['key'],
-                'auth_token' => $usertoken['auth_token'],
-                'folder_id' => $folder_id,
-            );
-            $config = array(
-                // Add parameters at the end: e.g.: params[]=nozip&params[]=onelevel&params[]=nofiles
-                // Don't add them to $params array or the oauth_http_build_query function will urlencode [ and ] - We don't want that!
-                // Parameter 'nozip' is absolutely crucial! Without it, the response is base64-like encoded, but base64_decode won't work!
-                CURLOPT_URL => $url.'?'.oauth_http_build_query($params).'&params[]=nozip&params[]=onelevel&params[]=nofiles',
-                CURLOPT_PORT => $port,
-                CURLOPT_POST => false,
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_SSL_VERIFYHOST => 2,
-                CURLOPT_SSL_VERIFYPEER => true,
-                CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
-            );
-            $result = mahara_http_request($config);
-            if ($result->info['http_code'] == 200 && !empty($result->data)) {
-                $data = oauth_parse_xml($result->data);
-                if (isset($data['status']) && $data['status'] == 'listing_ok') {
-                    if (isset($data['tree']['folder']['@attributes']) && isset($data['tree']['folder']['@attributes']['id'])) {
-                        $info = array(
-                            'id'          => $data['tree']['folder']['@attributes']['id'],
-                            'name'        => $data['tree']['folder']['@attributes']['name'],
-                            'shared'      => $data['tree']['folder']['@attributes']['shared'],
-                            'description' => $data['tree']['folder']['@attributes']['description'],
-                            'created'     => format_date($data['tree']['folder']['@attributes']['created'], 'strfdaymonthyearshort'),
-                            'updated'     => format_date($data['tree']['folder']['@attributes']['updated'], 'strfdaymonthyearshort'),
-                        );
-                    } elseif (isset($data['tree']['folder']['id'])) {
-                        $info = array(
-                            'id'          => $data['tree']['folder']['id'],
-                            'name'        => $data['tree']['folder']['name'],
-                            'shared'      => $data['tree']['folder']['shared'],
-                            'description' => $data['tree']['folder']['description'],
-                            'created'     => format_date($data['tree']['folder']['created'], 'strfdaymonthyearshort'),
-                            'updated'     => format_date($data['tree']['folder']['updated'], 'strfdaymonthyearshort'),
-                        );
-                    } else {
-                        $info = array();
-                    }
-                    return $info;
-                } else {
-                    throw new AccessDeniedException(get_string('folderaccessdenied', 'artefact.cloud'));
-                }
-            }
-         } else {
-            throw new ConfigException('Can\'t find Box consumer key.');
-        }
-    }
-
-    /*
-     * SEE: http://developers.box.net/w/page/12923934/ApiFunction_get_file_info
-     */
-    public function get_file_info($file_id=0) {
-        global $USER;
-        $cloud     = self::cloud_info();
-        $consumer  = self::consumer_tokens();
-        $usertoken = self::user_tokens($USER->get('id'));
-        if (!empty($consumer['key'])) {
-            $url = $cloud['baseurl'].$cloud['version'].'/rest';
-            $method = 'GET';
-            $port = $cloud['ssl'] ? '443' : '80';
-            $params = array(
-                'action'  => 'get_file_info',
-                'api_key' => $consumer['key'],
-                'auth_token' => $usertoken['auth_token'],
-                'file_id' => $file_id,
-            );
-            $config = array(
-                CURLOPT_URL => $url.'?'.oauth_http_build_query($params),
-                CURLOPT_PORT => $port,
-                CURLOPT_POST => false,
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_SSL_VERIFYHOST => 2,
-                CURLOPT_SSL_VERIFYPEER => true,
-                CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
-            );
-            $result = mahara_http_request($config);
-            if ($result->info['http_code'] == 200 && !empty($result->data)) {
-                $data = oauth_parse_xml($result->data);
-                if (isset($data['status']) && $data['status'] == 's_get_file_info') {
-                    $info = array(
-                        'id'          => $data['info']['file_id'],
-                        'name'        => $data['info']['file_name'],
-                        'bytes'       => $data['info']['size'],
-                        'size'        => bytes_to_size1024($data['info']['size']),
-                        'shared'      => $data['info']['shared'],
-                        'description' => $data['info']['description'],
-                        'created'     => format_date($data['info']['created'], 'strfdaymonthyearshort'),
-                        'updated'     => format_date($data['info']['updated'], 'strfdaymonthyearshort'),
-                    );
-                    return $info;
-                } else {
-                    throw new AccessDeniedException(get_string('fileaccessdenied', 'artefact.cloud'));
-                }
-            }
-         } else {
-            throw new ConfigException('Can\'t find Box consumer key.');
-        }
-    }
-
-    /*
-     * SEE: http://developers.box.net/w/page/12923951/ApiFunction_Upload%20and%20Download
-     */
-    public function download_file($file_id=0) {
-        global $USER;
-        $cloud     = self::cloud_info();
-        $usertoken = self::user_tokens($USER->get('id'));
-        // Construct download url, to download file...
-        // e.g.: https://www.box.net/api/1.0/download/<auth_token>/<file_id>
-        $url = $cloud['baseurl'] . $cloud['version'] . '/download/' . $usertoken['auth_token'] . '/' . $file_id;
-        $result = '';
-        if ($file_id > 0) {
-            $ch = curl_init($url);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
-            curl_setopt($ch, CURLOPT_CAINFO, get_config('docroot').'artefact/cloud/cert/cacert.crt');
-            $result = curl_exec($ch);
-            curl_close($ch);
-        }
-        return $result;
-    }
-
-    /*
-     * SEE: http://developers.box.net/w/page/50509454/create_file_embed
-     */
-    public function embed_file($file_id=0, $options=array()) {
-        global $USER;
-        $cloud     = self::cloud_info();
-        $consumer  = self::consumer_tokens();
-        $usertoken = self::user_tokens($USER->get('id'));
-        if (!empty($consumer['key'])) {
-            //  File must be flagged as shared before it can be embedded, so make it public...
-            self::make_public('file', $file_id);
-            // Get file embed code...
-            $url = $cloud['baseurl'].$cloud['version'].'/rest';
-            $method = 'GET';
-            $port = $cloud['ssl'] ? '443' : '80';
-            $params = array(
-                'action'  => 'create_file_embed',
-                'api_key' => $consumer['key'],
-                'auth_token' => $usertoken['auth_token'],
-                'file_id' => $file_id,
-            );
-            $config = array(
-                CURLOPT_URL => $url.'?'.oauth_http_build_query($params),
-                CURLOPT_PORT => $port,
-                CURLOPT_POST => false,
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_SSL_VERIFYHOST => 2,
-                CURLOPT_SSL_VERIFYPEER => true,
-                CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
-            );
-            $result = mahara_http_request($config);
-            if ($result->info['http_code'] == 200 && !empty($result->data)) {
-                $data = oauth_parse_xml($result->data);
-                if (isset($data['status']) && $data['status'] == 's_create_file_embed') {
-                    $html = $data['file_embed_html'];
-                } else {
-                    $html = '';
-                }
-                return $html;
-            }
-        } else {
-            throw new ConfigException('Can\'t find Box consumer key.');
-        }
-    }
-
-    /*
-     * IMPORTANT: Used by embed_file method above!
-     * SEE: http://developers.box.net/w/page/12923943/ApiFunction_public_share
-     */
-    public function make_public($target, $target_id) {
-        global $USER;
-        $cloud     = self::cloud_info();
-        $consumer  = self::consumer_tokens();
-        $usertoken = self::user_tokens($USER->get('id'));
-        if (!empty($consumer['key'])) {
-            $url = $cloud['baseurl'].$cloud['version'].'/rest';
-            $method = 'POST';
-            $port = $cloud['ssl'] ? '443' : '80';
-            $params = array(
-                'action'  => 'public_share',
-                'api_key' => $consumer['key'],
-                'auth_token' => $usertoken['auth_token'],
-                'target' => $target,
-                'target_id' => $target_id,
-                'password' => null,
-                'message' => null,
-                'emails' => null,
-            );
-            $header = array();
-            $header[] = build_oauth_header($params, "Box API PHP Client");
-            $header[] = 'Content-Type: application/x-www-form-urlencoded';
+    // SEE: https://developers.box.com/docs/#folders-get-information-about-a-folder
+    public function get_folder_info($folder_id=0, $owner=null) {
+        $consumer = self::get_service_consumer($owner);
+        $token = self::check_access_token($owner);
+        if (!empty($consumer->key) && !empty($consumer->secret)) {
+            $url = $consumer->apiurl.$consumer->version.'/folders/'.$folder_id;
+            $port = $consumer->ssl ? '443' : '80';
             $config = array(
                 CURLOPT_URL => $url,
                 CURLOPT_PORT => $port,
                 CURLOPT_HEADER => true,
-                CURLOPT_HTTPHEADER => $header,
-                CURLOPT_POST => true,
-                CURLOPT_POSTFIELDS => oauth_http_build_query($params),
+                CURLOPT_HTTPHEADER => array('Authorization: Bearer '.$token),
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_SSL_VERIFYHOST => 2,
                 CURLOPT_SSL_VERIFYPEER => true,
@@ -1059,12 +726,112 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
             );
             $result = mahara_http_request($config);
             if ($result->info['http_code'] == 200 && !empty($result->data)) {
-                $data = oauth_parse_xml(substr($result->data, $result->info['header_size']));
-                return $data['public_name'];
+                $data = json_decode(substr($result->data, $result->info['header_size']), true);
+                $info = array(
+                    'id'          => $data['id'],
+					'parent_id'   => $data['parent']['id'],
+                    'name'        => $data['name'],
+                    'bytes'       => $data['size'],
+                    'size'        => bytes_to_size1024($data['size']),
+                    'description' => $data['description'],
+                    'created'     => format_date(strtotime($data['created_at']), 'strfdaymonthyearshort'),
+                    'updated'     => format_date(strtotime($data['modified_at']), 'strfdaymonthyearshort'),
+                    'preview'     => $data['shared_link']['url'],
+                );
+                return $info;
             }
-         } else {
-            throw new ConfigException('Can\'t find Box consumer key.');
         }
+        else {
+            throw new ConfigException('Can\'t find Box consumer key and/or consumer secret.');
+        }
+    }
+
+    // SEE: https://developers.box.com/docs/#files-get
+    public function get_file_info($file_id=0, $owner=null) {
+        $consumer = self::get_service_consumer($owner);
+        $token = self::check_access_token($owner);
+        if (!empty($consumer->key) && !empty($consumer->secret)) {
+            $url = $consumer->apiurl.$consumer->version.'/files/'.$file_id;
+            $port = $consumer->ssl ? '443' : '80';
+            $config = array(
+                CURLOPT_URL => $url,
+                CURLOPT_PORT => $port,
+                CURLOPT_HEADER => true,
+                CURLOPT_HTTPHEADER => array('Authorization: Bearer '.$token),
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_SSL_VERIFYHOST => 2,
+                CURLOPT_SSL_VERIFYPEER => true,
+                CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
+            );
+            $result = mahara_http_request($config);
+            if ($result->info['http_code'] == 200 && !empty($result->data)) {
+                $data = json_decode(substr($result->data, $result->info['header_size']), true);
+                $info = array(
+                    'id'          => $data['id'],
+					'parent_id'   => $data['parent']['id'],
+                    'name'        => $data['name'],
+                    'bytes'       => $data['size'],
+                    'size'        => bytes_to_size1024($data['size']),
+                    'description' => $data['description'],
+                    'created'     => format_date(strtotime($data['created_at']), 'strfdaymonthyearshort'),
+                    'updated'     => format_date(strtotime($data['modified_at']), 'strfdaymonthyearshort'),
+                    'preview'     => $data['shared_link']['url'],
+                );
+                return $info;
+            }
+        }
+        else {
+            throw new ConfigException('Can\'t find Box consumer key and/or consumer secret.');
+        }
+    }
+
+    // SEE: https://developers.box.com/docs/#files-download-a-file
+    public function download_file($file_id=0, $owner=null) {
+        $consumer = self::get_service_consumer($owner);
+        $token = self::check_access_token($owner);
+        if (!empty($consumer->key) && !empty($consumer->secret)) {
+            $url = $consumer->apiurl.$consumer->version.'/files/'.$file_id.'/content';
+            $port = $consumer->ssl ? '443' : '80';
+            $ch = curl_init($url);
+            curl_setopt($ch, CURLOPT_PORT, $port);
+            curl_setopt($ch, CURLOPT_POST, false);
+            curl_setopt($ch, CURLOPT_HEADER, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, array('Authorization: Bearer '.$token));
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+            curl_setopt($ch, CURLOPT_CAINFO, get_config('docroot').'artefact/cloud/cert/cacert.crt');
+            // Box API request returns 'Location' inside response header.
+            // Follow 'Location' in response header to get the actual file content.
+            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+            $result = curl_exec($ch);
+            $info = curl_getinfo($ch);
+            curl_close($ch);
+
+            // Another request to get the actual file contents...
+            $ch2 = curl_init($info['url']);
+            curl_setopt($ch2, CURLOPT_PORT, $port);
+            curl_setopt($ch2, CURLOPT_POST, false);
+            curl_setopt($ch2, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch2, CURLOPT_SSL_VERIFYHOST, 2);
+            curl_setopt($ch2, CURLOPT_SSL_VERIFYPEER, true);
+            curl_setopt($ch2, CURLOPT_CAINFO, get_config('docroot').'artefact/cloud/cert/cacert.crt');
+            $result2 = curl_exec($ch2);
+            curl_close($ch2);
+            return $result2;
+        }
+    }
+
+    // SEE: https://developers.box.com/box-embed/
+    public function embed_file($file_id=0, $options=array(), $owner=null) {
+        $data = self::get_file_info($file_id, $owner);
+        $shared = basename($data['preview']);
+        $width = (isset($options['width']) ? $options['width'] : 400);
+        $height = (isset($options['height']) ? $options['height'] : 300);
+
+        $html = '<iframe src="https://app.box.com/embed_widget/s/' . $shared . '" width="' . $width . '" height="' . $height . '" frameborder="0" allowfullscreen webkitallowfullscreen mozallowfullscreen oallowfullscreen msallowfullscreen></iframe>';
+
+        return $html;
     }
 
 }

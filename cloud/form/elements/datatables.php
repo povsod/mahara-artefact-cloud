@@ -1,26 +1,11 @@
 <?php
 /**
- * Pieforms: Advanced web forms made easy
- * Copyright (C) 2006-2012 Catalyst IT Ltd (http://www.catalyst.net.nz)
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * @package    pieform
  * @subpackage element
  * @author     Gregor Anzelj
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2012 Gregor Anzelj, gregor.anzelj@gmail.com
+ * @copyright  (C) 2012-2015 Gregor Anzelj, gregor.anzelj@gmail.com
  *
  */
 
@@ -38,8 +23,10 @@ defined('INTERNAL') || die();
 function pieform_element_datatables(Pieform $form, $element) {/*{{{*/
     $name = Pieform::hsc($element['name']);
     $WWWROOT = get_config('wwwroot');
-    $SERVICE = $element['service']; // Cloud service name
+    $SERVICE = Pieform::hsc($element['service']); // Cloud service name
+    $FULLPATH = (isset($element['fullpath']) ? $element['fullpath'] : '/');
     $options = (isset($element['options']) ? $element['options'] : null);
+	$path = $SERVICE . 'path';
     
     $strService = get_string('servicename', 'blocktype.cloud/'.$SERVICE);
     $strName    = get_string('Name', 'artefact.file');
@@ -47,12 +34,13 @@ function pieform_element_datatables(Pieform $form, $element) {/*{{{*/
 
     $html = <<<EOHTML
 <input type="hidden" name="{$name}" id="{$name}" value="">
+<input type="hidden" name="{$path}" id="{$path}" value="">
 <table id="fileList" class="tablerenderer filelist" width="100%">
     <thead>
         <tr> 
-            <th class="filethumb" width="24"><img src="{$WWWROOT}artefact/cloud/blocktype/{$SERVICE}/img/root.png" title="{$strService}"></th>
-            <th>&nbsp;{$strName}</th>
-            <th width="40"><strong>{$strSelect}</strong></th>
+            <th class="filethumb" width="24">&nbsp;</th>
+            <th>{$strName}</th>
+            <th width="40">&nbsp;</th>
             <th width="1"></th>
         </tr>
     </thead>
@@ -72,7 +60,7 @@ EOHTML;
 
 
 function pieform_element_datatables_views_js(Pieform $form, $element) {
-    $name = Pieform::hsc($element['name']);
+    $name = (isset($element['name']) ? Pieform::hsc($element['name']) : 'instconf');
 
     $options = (isset($element['options']) ? $element['options'] : null);
     $MODE = '000000';
@@ -85,9 +73,9 @@ function pieform_element_datatables_views_js(Pieform $form, $element) {
     
     $id = (isset($element['current']) ? $element['current'] : 0);
     $WWWROOT  = get_config('wwwroot');
-    $SERVICE  = $element['service'];
-    $BLOCKID  = $element['block'];
-    $FULLPATH = (isset($element['fullpath']) ? $element['fullpath'] : '0|@');
+    $SERVICE  = Pieform::hsc($element['service']);
+    $BLOCKID  = Pieform::hsc($element['block']);
+	$path = $SERVICE . 'path';
     
     $firstpage    = json_encode(get_string('firstpage', 'artefact.cloud'));
     $previouspage = json_encode(get_string('previouspage', 'artefact.cloud'));
@@ -156,7 +144,7 @@ var oTable = jQuery('#fileList').dataTable( {
     "bPaginate": false,
     "bProcessing": true,
     "bServerSide": false,
-    "sAjaxSource": '{$WWWROOT}artefact/cloud/form/elements/datatables.json.php?service={$SERVICE}&mode={$MODE}&block={$BLOCKID}&fullpath={$FULLPATH}&id=init',
+    "sAjaxSource": '{$WWWROOT}artefact/cloud/form/elements/datatables.json.php?service={$SERVICE}&mode={$MODE}&block={$BLOCKID}&id=0',
     "aaSorting": [[3,'desc']],
     "aaSortingFixed": [[3,'desc']],
     "fnRowCallback": function(nRow, aData, iDisplayIndex, iDisplayIndexFull) {
@@ -195,13 +183,14 @@ var oTable = jQuery('#fileList').dataTable( {
 } );
     
 jQuery('#fileList').on('click', 'a.changefolder', function () {
-    oTable.fnReloadAjax('{$WWWROOT}artefact/cloud/form/elements/datatables.json.php?service={$SERVICE}&mode={$MODE}&block={$BLOCKID}&fullpath=&id=' + jQuery(this).attr('id'));
+    oTable.fnReloadAjax('{$WWWROOT}artefact/cloud/form/elements/datatables.json.php?service={$SERVICE}&mode={$MODE}&block={$BLOCKID}&id=' + jQuery(this).attr('id'));
 } );
     
 jQuery('#instconf').submit(function () {
     // Serialize values of all form elements and write then into hidden input element.
     // That way we can get all the values on 'the other side' and save them into DB.
-    jQuery('#{$name}').val(jQuery(this).find('input[name="artefacts[]"]').serialize());
+	var files = jQuery(this).find('input[name="artefacts[]"]').serialize();
+    jQuery('#{$name}').val(files);
 } );
 EOJS;
     return $js;
@@ -218,7 +207,7 @@ EOJS;
 function pieform_element_datatables_get_headdata($element) {
     $headdata = array(
         '<script type="text/javascript" src="' . get_config('wwwroot') . 'js/jquery/jquery.js"></script>',
-        '<script type="text/javascript" src="' . get_config('wwwroot') . 'artefact/cloud/datatables/js/jquery.dataTables.js"></script>'
+        '<script type="text/javascript" src="' . get_config('wwwroot') . 'artefact/cloud/datatables/js/jquery.dataTables.min.js"></script>'
     );
     return $headdata;
 }

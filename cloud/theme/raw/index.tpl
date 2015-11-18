@@ -2,10 +2,10 @@
 
 <table id="cloudlist" width="100%" class="tablerenderer cloud">
     <colgroup width="10%"></colgroup>
-    <colgroup width="45%"></colgroup>
-    <colgroup width="12%"></colgroup>
-    <colgroup width="12%"></colgroup>
-    <colgroup width="20%"></colgroup>
+    <colgroup width="75%"></colgroup>
+    <colgroup width="5%"></colgroup>
+    <colgroup width="5%"></colgroup>
+    <colgroup width="5%"></colgroup>
     <thead>
         <tr>
             <th>&nbsp;</th>
@@ -18,11 +18,11 @@
     <tbody>
         {foreach from=$data item=cloud}
         <tr class="{cycle values='r0,r1'}">
-            <td align="center"><img src="{$WWWROOT}artefact/cloud/blocktype/{$cloud.service_name}/img/logo.png" width="32" height="32"></td>
-            <td style="vertical-align:middle"><a href="{$cloud.service_url}" target="_blank">{str tag='servicename' section='blocktype.cloud/$cloud.service_name'}</a></td>
-            <td style="vertical-align:middle">{if $cloud.service_auth}<a href="{$WWWROOT}artefact/cloud/blocktype/{$cloud.service_name}/account.php" title="{str tag="account" section="artefact.cloud"}" class="btn-view">{str tag="account" section="artefact.cloud"}</a>{/if}</td>
-            <td style="vertical-align:middle">{if $cloud.service_manage}<a href="{$WWWROOT}artefact/cloud/blocktype/{$cloud.service_name}/manage.php" title="{str tag="manage" section="artefact.cloud"}" class="btn-manage">{str tag="manage" section="artefact.cloud"}</a>{/if}</td>
-            <td style="vertical-align:middle">{if $cloud.service_auth}<a href="{$WWWROOT}artefact/cloud/blocktype/{$cloud.service_name}/account.php?action=logout" title="{str tag="accessrevoke" section="artefact.cloud"}" class="btn-deny">{str tag="accessrevoke" section="artefact.cloud"}</a>{else}<a href="{$WWWROOT}artefact/cloud/blocktype/{$cloud.service_name}/account.php?action=login" title="{str tag="accessgrant" section="artefact.cloud"}" class="btn-access">{str tag="accessgrant" section="artefact.cloud"}</a>{/if}</td>
+            <td align="center"><img src="{$WWWROOT}artefact/cloud/blocktype/{$cloud.service_name}/theme/raw/static/images/thumb.png" width="24" height="24"></td>
+            <td style="vertical-align:middle"><a href="{$cloud.service_url}" target="_blank">{str tag='servicename' section='blocktype.cloud/$cloud.service_name'}{if $cloud.service_subname}&nbsp;-&nbsp;{$cloud.service_subname}{/if}</a></td>
+            <td align="center" style="vertical-align:middle">{if $cloud.service_auth}<a href="{$WWWROOT}artefact/cloud/blocktype/{$cloud.service_name}/account.php" title="{str tag=account section=artefact.cloud}"><img src="{theme_url filename='images/btn_secreturl.png'}" alt="{str tag=account section=artefact.cloud}"></a>{/if}</td>
+            <td align="center" style="vertical-align:middle">{if $cloud.service_manage}<a href="{$WWWROOT}artefact/cloud/blocktype/{$cloud.service_name}/manage.php" title="{str tag=manage section=artefact.cloud}"><img src="{theme_url filename='images/btn_configure.png'}" alt="{str tag=manage section=artefact.cloud}"></a>{/if}</td>
+            <td align="center" style="vertical-align:middle">{if $cloud.service_auth}<a href="{$WWWROOT}artefact/cloud/blocktype/{$cloud.service_name}/account.php?action=logout" title="{str tag=accessrevoke section=artefact.cloud}"><img src="{theme_url filename='images/btn_deleteremove.png'}" alt="{str tag=accessrevoke section=artefact.cloud}"></a>{else}<a href="{$WWWROOT}artefact/cloud/blocktype/{$cloud.service_name}/account.php?action=login" title="{str tag=accessgrant section=artefact.cloud}"><img src="{theme_url filename='images/btn_access.png'}" alt="{str tag=accessgrant section=artefact.cloud}"></a>{/if}</td>
         </tr>
         {/foreach}
     </tbody>

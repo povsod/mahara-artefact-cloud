@@ -1,27 +1,11 @@
 <?php
 /**
- * Mahara: Electronic portfolio, weblog, resume builder and social networking
- * Copyright (C) 2006-2012 Catalyst IT Ltd and others; see:
- *                         http://wiki.mahara.org/Contributors
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * @package    mahara
  * @subpackage blocktype-zotero
  * @author     Gregor Anzelj
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2012 Gregor Anzelj, gregor.anzelj@gmail.com
+ * @copyright  (C) 2014 Gregor Anzelj, gregor.anzelj@gmail.com
  *
  */
 
@@ -38,18 +22,25 @@ require_once('lib.php');
 $action = param_alpha('action', 'info');
 
 switch ($action) {
+    case 'test':
+        //$test = PluginBlocktypeZotero::download_file('GTKAWN7Q');
+        //$test = PluginBlocktypeZotero::get_file_info('GTKAWN7Q');
+        //PluginBlocktypeZotero::get_folder_info('II7IVJ23');
+        //$test = PluginBlocktypeZotero::get_bibbase();
+        $test = PluginBlocktypeZotero::get_folder_content('cs');
+        break;
     case 'login':
         PluginBlocktypeZotero::request_token();
         break;
     case 'logout':
         PluginBlocktypeZotero::revoke_access();
         PluginBlocktypeZotero::delete_token();
+        $SESSION->add_ok_msg(get_string('accessrevoked', 'artefact.cloud'));
         redirect(get_config('wwwroot').'artefact/cloud');
         break;
     default:
         $account = PluginBlocktypeZotero::account_info();
         $smarty = smarty();
-        //$smarty->assign('PAGEHEADING', TITLE);
         $smarty->assign('account', $account);
         $smarty->display('artefact:cloud:account.tpl');
 }

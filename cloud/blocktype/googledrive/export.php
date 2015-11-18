@@ -1,32 +1,16 @@
 <?php
 /**
- * Mahara: Electronic portfolio, weblog, resume builder and social networking
- * Copyright (C) 2006-2012 Catalyst IT Ltd and others; see:
- *                         http://wiki.mahara.org/Contributors
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * @package    mahara
  * @subpackage blocktype-googledrive
  * @author     Gregor Anzelj
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2012 Gregor Anzelj, gregor.anzelj@gmail.com
+ * @copyright  (C) 2012-2015 Gregor Anzelj, gregor.anzelj@gmail.com
  *
  */
 
 define('INTERNAL', 1);
-//define('JSON', 1);
+define('PUBLIC', 1);
 
 require(dirname(dirname(dirname(dirname(dirname(__FILE__))))) . '/init.php');
 safe_require('artefact', 'cloud');
@@ -34,10 +18,19 @@ safe_require('blocktype', 'cloud/googledrive');
 
 $id   = param_variable('id', 0); // Possible values: numerical (= folder id), 0 (= root folder), parent (= get parent folder id from path)
 $save = param_integer('save', 0); // Indicate to download file or save it (save=1) to local Mahara file repository...
+$viewid = param_integer('view', null);
 
+$owner = null;
+if ($viewid > 0) {
+    $view = new View($viewid);
+    $owner = $view->get('owner');
+    if (!can_view_view($viewid)) {
+        throw new AccessDeniedException();
+    }
+}
 
 // Get informatin/data about the file...
-$file = PluginBlocktypeGoogledrive::get_file_info($id);
+$file = PluginBlocktypeGoogledrive::get_file_info($id, $owner);
 
 // Get/construct export file format options...
 $exportoptions = array();
@@ -187,6 +180,9 @@ function saveform_submit(Pieform $form, $values) {
     if (isset($mimetypes[$extension])) {
         $filetype = $mimetypes[$extension]->mimetype;
     }
+    elseif ($extension == 'doc') {
+        $filetype = 'application/msword';
+    }
     elseif ($extension == 'docx') {
         $filetype = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
     }
@@ -196,14 +192,29 @@ function saveform_submit(Pieform $form, $values) {
     elseif ($extension == 'pps') {
         $filetype = 'application/vnd.ms-powerpoint';
     }
+    elseif ($extension == 'ppt') {
+        $filetype = 'application/vnd.ms-powerpoint';
+    }
     elseif ($extension == 'ppsx') {
         $filetype = 'application/vnd.openxmlformats-officedocument.presentationml.slideshow';
     }
     elseif ($extension == 'pptx') {
         $filetype = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
     }
+    elseif ($extension == 'xls') {
+        $filetype = 'application/vnd.ms-excel';
+    }
     elseif ($extension == 'xlsx') {
         $filetype = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    }
+    elseif ($extension == 'odt') {
+        $filetype = 'application/vnd.oasis.opendocument.text';
+    }
+    elseif ($extension == 'ods') {
+        $filetype = 'application/vnd.oasis.opendocument.spreadsheet';
+    }
+    elseif ($extension == 'odp') {
+        $filetype = 'application/vnd.oasis.opendocument.presentation';
     }
     
     $fileartefact = (object) array(
@@ -241,22 +252,73 @@ function saveform_submit(Pieform $form, $values) {
 
 function mime2extension($mimeType) {
     $extension = '';
-    // ??? OpenDocument Presentation ???
     switch ($mimeType) {
-        case 'application/msword':                                                        $extension = 'doc'; break;
-        case 'application/pdf':                                                           $extension = 'pdf'; break;
-        case 'application/rtf':                                                           $extension = 'rtf'; break;
-        case 'application/vnd.ms-excel':                                                  $extension = 'xls'; break;
-        case 'application/vnd.openxmlformats-officedocument.presentationml.presentation': $extension = 'ppt'; break;
-        case 'application/vnd.oasis.opendocument.text':                                   $extension = 'odt'; break;
-        case 'application/x-vnd.oasis.opendocument.spreadsheet':                          $extension = 'odt'; break;
-        case 'image/jpeg':                                                                $extension = 'jpg'; break;
-        case 'image/png':                                                                 $extension = 'png'; break;
-        case 'image/svg+xml':                                                             $extension = 'svg'; break;
-        case 'text/html':                                                                 $extension = 'html'; break;
-        case 'text/plain':                                                                $extension = 'txt'; break;
+        case 'application/msword':
+            $extension = 'doc';
+            break;
+        case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+            $extension = 'docx';
+            break;
+        case 'application/pdf':
+            $extension = 'pdf';
+            break;
+        case 'application/rtf':
+            $extension = 'rtf';
+            break;
+        case 'application/vnd.ms-excel':
+            $extension = 'xls';
+            break;
+        case 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
+            $extension = 'xlsx';
+            break;
+        case 'application/vnd.ms-powerpoint':
+            $extension = 'ppt';
+            break;
+        case 'application/vnd.openxmlformats-officedocument.presentationml.presentation':
+            $extension = 'pptx';
+            break;
+        case 'application/vnd.oasis.opendocument.text':
+        case 'application/x-vnd.oasis.opendocument.text':
+            $extension = 'odt';
+            break;
+        case 'application/vnd.oasis.opendocument.spreadsheet':
+        case 'application/x-vnd.oasis.opendocument.spreadsheet':
+            $extension = 'ods';
+            break;
+        case 'application/vnd.oasis.opendocument.presentation':
+        case 'application/x-vnd.oasis.opendocument.presentation':
+            $extension = 'odp';
+            break;
+        case 'image/jpeg':
+        case 'image/jpg':
+        case 'application/jpg':
+        case 'application/x-jpg':
+        case 'image/vnd.swiftview-jpeg':
+        case 'image/x-xbitmap':
+            $extension = 'jpg';
+            break;
+        case 'image/png':
+        case 'application/png':
+        case 'application/x-png':
+            $extension = 'png';
+            break;
+        case 'image/svg':
+        case 'image/svg+xml':
+        case 'image/svg-xml':
+        case 'image/vnd.adobe.svg+xml':
+        case 'text/xml-svg':
+            $extension = 'svg';
+            break;
+        case 'text/html':
+            $extension = 'html';
+            break;
+        case 'text/plain':
+        case 'application/txt':
+            $extension = 'txt';
+            break;
     }
     return $extension;
 }
+
 
 ?>

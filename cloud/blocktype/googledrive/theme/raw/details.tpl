@@ -11,14 +11,14 @@
         <h4>
             <div class="fl filedata-thumb">
                 {if $type == 'folder'}
-                <img alt="" src="{theme_url filename="images/folder.gif"}">
+                <img alt="" src="{theme_url filename="images/folder.png"}">
                 {else}
-                {if $data.type == 'file'}<a href="{$WWWROOT}artefact/cloud/blocktype/googledrive/download.php?id={$id}">{/if}
-                <img alt="" src="{theme_url filename="images/file.gif"}">
+                {if $data.type == 'file'}<a href="{$WWWROOT}artefact/cloud/blocktype/googledrive/download.php?id={$id}&view={$viewid}">{/if}
+                <img alt="" src="{theme_url filename="images/file.png"}">
                 {if $data.type == 'file'}</a>{/if}
                 {/if}
             </div>
-            {if $data.type == 'file'}<a href="{$WWWROOT}artefact/cloud/blocktype/googledrive/download.php?id={$id}">{$data.name}</a>{else}{$data.name}{/if}
+            {if $data.type == 'file'}<a href="{$WWWROOT}artefact/cloud/blocktype/googledrive/download.php?id={$id}&view={$viewid}">{$data.name}</a>{else}{$data.name}{/if}
         </h4>
 
         <table class="filedata">
@@ -43,13 +43,13 @@
                 {/if}
                 <tr>
                     <th>{str tag=Shared section=artefact.cloud}:</th>
-                    <td style="vertical-align:middle">{if $data.shared}<img alt="" src="{theme_url filename="images/success.gif"}">{/if}</td>
+                    <td style="vertical-align:middle">{if $data.shared}<img alt="" src="{theme_url filename="images/success.png"}">{/if}</td>
                 </tr>
                 {if $data.type == 'file'}
                 <tr>
                     <th>{str tag=Download section=artefact.file}:</th>
                     <td style="vertical-align:middle">
-                    <a href="{$WWWROOT}artefact/cloud/blocktype/googledrive/download.php?id={$id}">{str tag=Download section=artefact.file}</a>
+                    <a href="{$WWWROOT}artefact/cloud/blocktype/googledrive/download.php?id={$id}&view={$viewid}">{str tag=Download section=artefact.file}</a>
                     </td>
                 </tr>
                 {/if}

@@ -10,15 +10,15 @@
         <div id="view">
         <h4>
             <div class="fl filedata-thumb">
-                <a href="{$WWWROOT}artefact/cloud/blocktype/dropbox/download.php?id={$id}">
+                <a href="{$WWWROOT}artefact/cloud/blocktype/dropbox/download.php?id={$id}&view={$viewid}">
                 {if $type == 'folder'}
-                <img alt="" src="{theme_url filename="images/folder.gif"}">
+                <img alt="" src="{theme_url filename="images/folder.png"}">
                 {else}
-                <img alt="" src="{theme_url filename="images/file.gif"}">
+                <img alt="" src="{theme_url filename="images/file.png"}">
                 {/if}
                 </a>
             </div>
-            <a href="{$WWWROOT}artefact/cloud/blocktype/dropbox/download.php?id={$id}">{$data.name}</a>
+            <a href="{$WWWROOT}artefact/cloud/blocktype/dropbox/download.php?id={$id}&view={$viewid}">{$data.name}</a>
         </h4>
 
         <table class="filedata">
@@ -48,7 +48,7 @@
                 <tr>
                     <th>{str tag=Download section=artefact.file}:</th>
                     <td style="vertical-align:middle">
-                    <a href="{$WWWROOT}artefact/cloud/blocktype/dropbox/download.php?id={$id}">{str tag=Download section=artefact.file}</a>
+                    <a href="{$WWWROOT}artefact/cloud/blocktype/dropbox/download.php?id={$id}&view={$viewid}">{str tag=Download section=artefact.file}</a>
                     </td>
                 </tr>
             </tbody>

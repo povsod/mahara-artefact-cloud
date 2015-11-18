@@ -1,32 +1,16 @@
 <?php
 /**
- * Mahara: Electronic portfolio, weblog, resume builder and social networking
- * Copyright (C) 2006-2012 Catalyst IT Ltd and others; see:
- *                         http://wiki.mahara.org/Contributors
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * @package    mahara
  * @subpackage blocktype-googledrive
  * @author     Gregor Anzelj
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2012 Gregor Anzelj, gregor.anzelj@gmail.com
+ * @copyright  (C) 2012-2015 Gregor Anzelj, gregor.anzelj@gmail.com
  *
  */
 
 define('INTERNAL', 1);
-//define('JSON', 1);
+define('PUBLIC', 1);
 
 require(dirname(dirname(dirname(dirname(dirname(__FILE__))))) . '/init.php');
 safe_require('artefact', 'cloud');
@@ -34,6 +18,16 @@ safe_require('blocktype', 'cloud/googledrive');
 
 $id   = param_variable('id', 0); // Possible values: numerical (= folder id), 0 (= root folder), parent (= get parent folder id from path)
 $save = param_integer('save', 0); // Indicate to download file or save it (save=1) to local Mahara file repository...
+$viewid = param_integer('view', null);
+
+$owner = null;
+if ($viewid > 0) {
+    $view = new View($viewid);
+    $owner = $view->get('owner');
+    if (!can_view_view($viewid)) {
+        throw new AccessDeniedException();
+    }
+}
 
 
 if ($save) {
@@ -73,8 +67,8 @@ if ($save) {
     $smarty->display('blocktype:googledrive:save.tpl');
 } else {
     // Download file
-    $file = PluginBlocktypeGoogledrive::get_file_info($id);
-    $content = PluginBlocktypeGoogledrive::download_file($id);
+    $file = PluginBlocktypeGoogledrive::get_file_info($id, $owner);
+    $content = PluginBlocktypeGoogledrive::download_file($id, $owner);
     
     header('Pragma: no-cache');
     header('Content-disposition: attachment; filename="' . $file['name'] . '"');

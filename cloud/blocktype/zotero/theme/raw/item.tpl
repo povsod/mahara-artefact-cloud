@@ -9,9 +9,9 @@
         <h4>
             <div class="fl filedata-thumb">
                 {if $type == 'collection'}
-                <img alt="" src="{theme_url filename="images/folder.gif"}">
+                <img alt="" src="{theme_url filename="images/folder.png"}">
                 {else}
-                <img alt="" src="{theme_url filename="images/file.gif"}">
+                <img alt="" src="{theme_url filename="images/file.png"}">
                 {/if}
             </div>
             {$data.title}

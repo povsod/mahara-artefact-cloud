@@ -113,6 +113,7 @@ td.filetags {
 }
 * html .filelist {
 	width: 98%;
+    border: 1px solid #CCCCCC;
 }
 .filelist th {
 	border-bottom: 1px solid #CCCCCC;
