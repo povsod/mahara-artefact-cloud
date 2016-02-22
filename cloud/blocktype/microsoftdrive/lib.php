@@ -77,8 +77,8 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
         $view = new View($viewid);
         $ownerid = $view->get('owner');
 
-        $data = ArtefactTypeCloud::get_user_preferences('microsoftdrive', $ownerid);
-        if ($data) {
+        $consumer = self::get_service_consumer();
+        if (isset($consumer->usrprefs['access_token']) && !empty($consumer->usrprefs['access_token'])) {
             return array(
                 'microsoftdrivelogo' => array(
                     'type' => 'html',

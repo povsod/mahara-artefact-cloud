@@ -64,8 +64,8 @@ class PluginBlocktypeOwncloud extends PluginBlocktypeCloud {
         $view = new View($viewid);
         $ownerid = $view->get('owner');
         
-        $data = ArtefactTypeCloud::get_user_preferences('owncloud', $ownerid);
-        if ($data) {
+        $consumer = self::get_service_consumer();
+        if (isset($consumer->usrprefs['token']) && !empty($consumer->usrprefs['token'])) {
             return array(
                 'owncloudlogo' => array(
                     'type' => 'html',
@@ -306,8 +306,14 @@ class PluginBlocktypeOwncloud extends PluginBlocktypeCloud {
      * $folder_id   integer   ID of the folder (on Cloud Service), which contents we wish to retrieve
      * $output      array     Function returns array, used to generate list of files/folders to show in Mahara view/page
      */
-    public function get_filelist($folder_id='/', $selected=array(), $owner=null) {
+    public function get_filelist($folder_id='/remote.php/webdav/', $selected=array(), $owner=null) {
         global $THEME;
+
+        // $folder_id equals to empty string if no file is
+        // selected, so return ownCloud default root folder ...
+        if ($folder_id == '') {
+            $folder_id = '/remote.php/webdav/';
+        }
 
         // Get folder contents...
         $consumer = self::get_service_consumer($owner);
