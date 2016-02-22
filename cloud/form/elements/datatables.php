@@ -5,7 +5,7 @@
  * @subpackage element
  * @author     Gregor Anzelj
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2012-2015 Gregor Anzelj, gregor.anzelj@gmail.com
+ * @copyright  (C) 2012-2016 Gregor Anzelj, info@povsod.com
  *
  */
 
@@ -26,7 +26,7 @@ function pieform_element_datatables(Pieform $form, $element) {/*{{{*/
     $SERVICE = Pieform::hsc($element['service']); // Cloud service name
     $FULLPATH = (isset($element['fullpath']) ? $element['fullpath'] : '/');
     $options = (isset($element['options']) ? $element['options'] : null);
-	$path = $SERVICE . 'path';
+    $path = $SERVICE . 'path';
     
     $strService = get_string('servicename', 'blocktype.cloud/'.$SERVICE);
     $strName    = get_string('Name', 'artefact.file');
@@ -35,12 +35,12 @@ function pieform_element_datatables(Pieform $form, $element) {/*{{{*/
     $html = <<<EOHTML
 <input type="hidden" name="{$name}" id="{$name}" value="">
 <input type="hidden" name="{$path}" id="{$path}" value="">
-<table id="fileList" class="tablerenderer filelist" width="100%">
+<table id="filelist" class="tablerenderer filelist table table-hover" width="100%">
     <thead>
         <tr> 
-            <th class="filethumb" width="24">&nbsp;</th>
+            <th width="20"></th>
             <th>{$strName}</th>
-            <th width="40">&nbsp;</th>
+            <th width="25%"></th>
             <th width="1"></th>
         </tr>
     </thead>
@@ -75,7 +75,7 @@ function pieform_element_datatables_views_js(Pieform $form, $element) {
     $WWWROOT  = get_config('wwwroot');
     $SERVICE  = Pieform::hsc($element['service']);
     $BLOCKID  = Pieform::hsc($element['block']);
-	$path = $SERVICE . 'path';
+    $path = $SERVICE . 'path';
     
     $firstpage    = json_encode(get_string('firstpage', 'artefact.cloud'));
     $previouspage = json_encode(get_string('previouspage', 'artefact.cloud'));
@@ -135,61 +135,64 @@ jQuery.fn.dataTableExt.oApi.fnReloadAjax = function ( oSettings, sNewSource, fnC
 }
 
 
-var oTable = jQuery('#fileList').dataTable( {
-    "asStripeClasses": [ 'r0', 'r1' ],
-    "bLengthChange": false,
-    "bFilter": false,
-    "bSort": true,
-    "bInfo": false,
-    "bPaginate": false,
-    "bProcessing": true,
-    "bServerSide": false,
-    "sAjaxSource": '{$WWWROOT}artefact/cloud/form/elements/datatables.json.php?service={$SERVICE}&mode={$MODE}&block={$BLOCKID}&id=0',
-    "aaSorting": [[3,'desc']],
-    "aaSortingFixed": [[3,'desc']],
-    "fnRowCallback": function(nRow, aData, iDisplayIndex, iDisplayIndexFull) {
-        if (aData[3] == "folder" || aData[3] == "parentfolder") {
-            jQuery(nRow).addClass('folder');
+var table = jQuery('#filelist').DataTable( {
+    "stripeClasses": [ 'r0', 'r1' ],
+    "lengthChange": false,
+    "searching": false,
+    "ordering": true,
+    "info": false,
+    "paging": false,
+    "processing": true,
+    "serverSide": false,
+    "ajax": '{$WWWROOT}artefact/cloud/form/elements/datatables.json.php?service={$SERVICE}&mode={$MODE}&block={$BLOCKID}&id=0',
+    "order": [[3,'desc']],
+    "orderFixed": [[3,'desc']],
+    "rowCallback": function(row, data, displayIndex, displayIndexFull) {
+        if (data[3] == "folder" || data[3] == "parentfolder") {
+            jQuery(row).addClass('file-item');
+            //jQuery(row).addClass('folder');
+            jQuery(row).addClass('no-hover');
         }
-        if (aData[3] == "file") {
-            jQuery(nRow).addClass('file');
+        if (data[3] == "file") {
+            jQuery(row).addClass('file-item');
+            jQuery(row).addClass('no-hover');
         }
-        return nRow;
+        return row;
     },
-    "oLanguage": {
-        "oPaginate": {
-            "sFirst": {$firstpage},
-            "sPrevious": {$previouspage},
-            "sNext": {$nextpage},
-            "sLast": {$lastpage}
+    "language": {
+        "paginate": {
+            "first": {$firstpage},
+            "previous": {$previouspage},
+            "next": {$nextpage},
+            "last": {$lastpage}
         },
-        "sEmptyTable": {$emptytable},
-        "sInfo": {$info},
-        "sInfoEmpty": {$infoempty},
-        "sInfoFiltered": {$infofiltered},
-        "sLengthMenu": {$lengthmenu},
-        "sLoadingRecords": {$loading},
-        "sProcessing": {$processing},
-        "sSearch": {$search},
-        "sZeroRecords": {$zerorecords}
+        "emptyTable": {$emptytable},
+        "info": {$info},
+        "infoEmpty": {$infoempty},
+        "infoFiltered": {$infofiltered},
+        "lengthMenu": {$lengthmenu},
+        "loadingRecords": {$loading},
+        "processing": {$processing},
+        "search": {$search},
+        "zeroRecords": {$zerorecords}
     },
-    "aoColumnDefs": [
-        { "aTargets": [ 0 ], "sClass": "filethumb", "bSortable": false },     /* Icon column */
-        { "aTargets": [ 1 ], "sClass": "filename" },                          /* Name column */
-        { "aTargets": [ 2 ], "sClass": "center s", "bSortable": false },      /* Ctrl column */
+    "columnDefs": [
+        { "targets": [ 0 ], "orderable": false }, /* Icon column */
+        { "targets": [ 1 ], "className": "filename" }, /* Name column */
+        { "targets": [ 2 ], "className": "text-right nowrap control-buttons", "orderable": false }, /* Ctrl column */
         // This column must be last, because it is hidden or everything gets screwed up!
-        { "aTargets": [ 3 ], "bVisible": false, "bSortable": false }          /* Type column */
+        { "targets": [ 3 ], "visible": false, "orderable": false } /* Type column */
     ]
 } );
     
-jQuery('#fileList').on('click', 'a.changefolder', function () {
-    oTable.fnReloadAjax('{$WWWROOT}artefact/cloud/form/elements/datatables.json.php?service={$SERVICE}&mode={$MODE}&block={$BLOCKID}&id=' + jQuery(this).attr('id'));
+jQuery('#filelist').on('click', 'a.changefolder', function () {
+    table.ajax.url('{$WWWROOT}artefact/cloud/form/elements/datatables.json.php?service={$SERVICE}&mode={$MODE}&block={$BLOCKID}&id=' + jQuery(this).attr('id')).load();
 } );
     
 jQuery('#instconf').submit(function () {
     // Serialize values of all form elements and write then into hidden input element.
     // That way we can get all the values on 'the other side' and save them into DB.
-	var files = jQuery(this).find('input[name="artefacts[]"]').serialize();
+    var files = jQuery(this).find('input[name="artefacts[]"]').serialize();
     jQuery('#{$name}').val(files);
 } );
 EOJS;
@@ -207,9 +210,8 @@ EOJS;
 function pieform_element_datatables_get_headdata($element) {
     $headdata = array(
         '<script type="text/javascript" src="' . get_config('wwwroot') . 'js/jquery/jquery.js"></script>',
-        '<script type="text/javascript" src="' . get_config('wwwroot') . 'artefact/cloud/datatables/js/jquery.dataTables.min.js"></script>'
+        '<script type="text/javascript" src="' . get_config('wwwroot') . 'artefact/cloud/lib/datatables/js/jquery.dataTables.min.js"></script>',
+        '<script type="text/javascript" src="' . get_config('wwwroot') . 'artefact/cloud/lib/datatables/js/dataTables.bootstrap.min.js"></script>',
     );
     return $headdata;
 }
-
-?>

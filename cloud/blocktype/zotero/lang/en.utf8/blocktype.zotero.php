@@ -5,7 +5,7 @@
  * @subpackage blocktype-zotero
  * @author     Gregor Anzelj
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2014 Gregor Anzelj, gregor.anzelj@gmail.com
+ * @copyright  (C) 2012-2016 Gregor Anzelj, info@povsod.com
  *
  */
 
@@ -17,13 +17,8 @@ $string['description'] = 'Select files from Zotero cloud';
 $string['service'] = 'Zotero'; // Same as plugin folder name, but can be CamelCase, e.g.: SkyDrive
 $string['servicename'] = 'Zotero'; // Full service name, e.g.: WIndows Live SkyDrive
 
-$string['requesttokennotreturned'] = 'There was no request token';
-$string['accesstokennotreturned'] = 'There was no access token';
-$string['accesstokensaved'] = 'Access token saved sucessfully';
-$string['accesstokensavefailed'] = 'Failed to save access token';
-
 $string['applicationgeneral'] = 'General information';
-$string['applicationdesc'] = 'You must create %san application%s, if you wish to access and use Zotero API.';
+$string['applicationdesc'] = 'You must create %san application%s, if you wish to access and use Zotero API. When you will create the application, the <code>Client key</code> and <code>Client secret</code> will be generated. Copy and paste them here. Then copy <code>Callback URL</code> and paste it into application settings. Save application settings and this plugin settings.';
 $string['applicationname'] = 'Application name';
 $string['applicationnamedesc'] = 'You must provide unique application name, e.g. the name of this site.';
 $string['applicationtype'] = 'Application type';
@@ -32,11 +27,12 @@ $string['consumerkey'] = 'Client key';
 $string['consumerkeydesc'] = 'When you\'ll create an application, you\'ll get a Client key. Paste it here.';
 $string['consumersecret'] = 'Client secret';
 $string['consumersecretdesc'] = 'When you\'ll create an application, you\'ll get a Client secret. Paste it here.';
-$string['applicationweb'] = 'Website';
+$string['applicationweb'] = 'Application website';
 $string['applicationwebdesc'] = 'The URL where this application will be used, e.g. URL of your site.';
-$string['redirecturl'] = 'Redirect URL';
+$string['redirecturl'] = 'Callback URL';
 $string['redirecturldesc'] = 'URL to return user to, after successful authentication. Copy it and paste it to application settings.';
 
+$string['exportsettings'] = 'Export settings';
 $string['selectexportformat'] = 'Select format to export citation(s) to:';
 $string['cite'] = 'Export citation(s)';
 
@@ -67,12 +63,12 @@ $string['style.turabian-author-date'] = 'Turabian Style (author-date)';
 $string['style.turabian-fullnote-bibliography'] = 'Turabian Style (full note with bibliography)';
 $string['style.vancouver'] = 'Vancouver';
 
-$string['creators'] = 'Creators'; // Ustvarjalci
-$string['creator.author'] = 'Author'; // Avtor
-$string['creator.contributor'] = 'Contributor'; // 
-$string['creator.editor'] = 'Editor'; // Urednik
-$string['creator.seriesEditor'] = 'Series editor'; // Urednik zbirke
-$string['creator.translator'] = 'Translator'; // Prevajalec
+$string['creators'] = 'Creators';
+$string['creator.author'] = 'Author';
+$string['creator.contributor'] = 'Contributor';
+$string['creator.editor'] = 'Editor';
+$string['creator.seriesEditor'] = 'Series editor';
+$string['creator.translator'] = 'Translator';
 
 $string['type'] = 'Type';
 $string['type.note'] = 'Note';
@@ -127,21 +123,3 @@ $string['ISBN'] = 'ISBN';
 $string['ISSN'] = 'ISSN';
 $string['url'] = 'URL';
 $string['accessDate'] = 'Access Date';
-
-/*
-$string['author'] = 'Author';
-$string['title'] = 'Title';
-*/
-
-/*
-$string['citationexported'] = 'Citation(s) exported successfully';
-$string['zotext'] = 'Zotext';
-$string['zotextdescription'] = 'These are Zotero enabled html notes that allow you to insert inline citations and optional bibliography.';
-$string['newzotext'] = 'New zotext';
-$string['zotextsaved'] = 'Zotext saved successfully.';
-$string['zotero'] = 'Zotero';
-
-$string['bibliography'] = 'Bibliography';
-*/
-
-?>

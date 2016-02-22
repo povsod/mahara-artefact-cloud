@@ -5,7 +5,7 @@
  * @subpackage blocktype-googledrive
  * @author     Gregor Anzelj
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2012-2015 Gregor Anzelj, gregor.anzelj@gmail.com
+ * @copyright  (C) 2012-2016 Gregor Anzelj, info@povsod.com
  *
  */
 
@@ -44,10 +44,10 @@ if ($save) {
     // Save file to Mahara
     $saveform = pieform(array(
         'name'       => 'saveform',
-        'renderer'   => 'maharatable',
         'plugintype' => 'artefact',
         'pluginname' => 'cloud',
-        'configdirs' => array(get_config('libroot') . 'form/', get_config('docroot') . 'artefact/cloud/form/'),
+        'template'   => 'exportsaveform.php',
+        'templatedir' => pieform_template_dir('exportsaveform.php', 'artefact/cloud'),
         'elements'   => array(
             'fileid' => array(
                 'type'  => 'hidden',
@@ -65,7 +65,7 @@ if ($save) {
                 )
             ),
             'folderid' => array(
-                'type'    => 'css_select',
+                'type'    => 'select',
                 'title'   => get_string('savetofolder', 'artefact.cloud'),
                 'options' => get_foldertree_options(),
                 //'size'    => 8,                
@@ -82,19 +82,19 @@ if ($save) {
     ));
     
     $smarty = smarty();
-    //$smarty->assign('SERVICE', 'googledrive');
     $smarty->assign('PAGEHEADING', get_string('exporttomahara', 'artefact.cloud'));
-    $smarty->assign('saveform', $saveform);
-    $smarty->display('blocktype:googledrive:save.tpl');
-} else {
+    $smarty->assign('form', $saveform);
+    $smarty->display('form.tpl');
+}
+elseif (!empty($exportoptions)) {
     // Export native GoogleDocs file to selected format
     // and than download it...
     $exportform = pieform(array(
         'name'       => 'exportform',
-        'renderer'   => 'maharatable',
         'plugintype' => 'artefact',
         'pluginname' => 'cloud',
-        'configdirs' => array(get_config('libroot') . 'form/', get_config('docroot') . 'artefact/cloud/form/'),
+        'template'   => 'exportform.php',
+        'templatedir' => pieform_template_dir('exportform.php', 'artefact/cloud'),
         'elements'   => array(
             'fileid' => array(
                 'type'  => 'hidden',
@@ -120,10 +120,33 @@ if ($save) {
     ));
     
     $smarty = smarty();
-    //$smarty->assign('SERVICE', 'googledrive');
     $smarty->assign('PAGEHEADING', get_string('export', 'artefact.cloud'));
     $smarty->assign('exportform', $exportform);
-    $smarty->display('blocktype:googledrive:export.tpl');
+    $smarty->display('artefact:cloud:export.tpl');
+}
+else {
+    // No export options for native GoogleDocs file...
+    $exportform = pieform(array(
+        'name'       => 'exportform',
+        'plugintype' => 'artefact',
+        'pluginname' => 'cloud',
+        'elements'   => array(
+            'notice' => array(
+                'type'  => 'html',
+                'value' => get_string('exportnotpossible', 'blocktype.cloud/googledrive'),
+            ),
+            'cancel' => array(
+                'type' => 'cancel',
+                'value' => get_string('back'), //get_string('cancel'),
+                'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/googledrive/manage.php',
+            )
+        ),
+    ));
+    
+    $smarty = smarty();
+    $smarty->assign('PAGEHEADING', get_string('export', 'artefact.cloud'));
+    $smarty->assign('exportform', $exportform);
+    $smarty->display('artefact:cloud:export.tpl');
 }
 
 
@@ -156,7 +179,8 @@ function saveform_submit(Pieform $form, $values) {
     // Determine (by file extension) if file is an image file or not
     if (in_array($extension, array('bmp', 'gif', 'jpg', 'jpeg', 'png'))) {
         $image = true;
-    } else {
+    }
+    else {
         $image = false;
     }
     
@@ -319,6 +343,3 @@ function mime2extension($mimeType) {
     }
     return $extension;
 }
-
-
-?>

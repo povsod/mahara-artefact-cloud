@@ -5,7 +5,7 @@
  * @subpackage artefact-cloud
  * @author     Gregor Anzelj
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2012-2015 Gregor Anzelj, gregor.anzelj@gmail.com
+ * @copyright  (C) 2012-2016 Gregor Anzelj, info@povsod.com
  *
  */
 
@@ -45,7 +45,7 @@ class PluginArtefactCloud extends PluginArtefact {
         if ($prevversion < 2014062600) {
             global $SESSION;
             // Windows Live SkyDrive became Microsoft One Drive,
-	     // so we need to:
+         // so we need to:
 
             // 1. Update/convert artefact types
             if ($artefacts = get_records_array('artefact', 'title', 'skydrive')) {
@@ -93,7 +93,6 @@ function recursive_skydrive_folder_delete($path) {
     }
     rmdir($path);
 }
-
 
 class ArtefactTypeCloud extends ArtefactType {
 
@@ -178,7 +177,6 @@ class ArtefactTypeCloud extends ArtefactType {
 
 }
 
-
 /*
  *
  * This class extends the base plugin blocktype class.
@@ -253,9 +251,7 @@ abstract class PluginBlocktypeCloud extends PluginBlocktype {
      */
     public abstract function embed_file($file_id, $options);
 
-
 }
-
 
 /**
  * Converts bytes into human readable format (use powers of 1024)
@@ -265,7 +261,7 @@ abstract class PluginBlocktypeCloud extends PluginBlocktype {
  * @link http://codeaid.net/php/convert-size-in-bytes-to-a-human-readable-format-%28php%29
  */
 function bytes_to_size1024($bytes, $precision=2) {
-    $unit = array('B','kB','MB','GB','TB','PB','EB');
+    $unit = array('B','KB','MB','GB','TB','PB','EB');
     return @round($bytes / pow(1024, ($i = floor(log($bytes, 1024)))), $precision).''.$unit[$i];
 }
 
@@ -277,17 +273,17 @@ function bytes_to_size1024($bytes, $precision=2) {
  * @link http://bytes.com/topic/php/answers/3917-seconds-converted-hh-mm-ss
  */
 function seconds_to_hms($seconds) {
-if ($seconds < 0) return '00:00:00';
-$minutes = (int)($seconds / 60);
-$seconds = $seconds % 60;
-$hours = (int)($minutes / 60);
-$minutes = $minutes % 60;
-$time = array(
-    str_pad($hours, 2, "0", STR_PAD_LEFT),
-    str_pad($minutes, 2, "0", STR_PAD_LEFT),
-    str_pad($seconds, 2, "0", STR_PAD_LEFT),
-);
-return implode(':', $time);
+    if ($seconds <= 0) return '00:00:00';
+    $minutes = (int)($seconds / 60);
+    $seconds = $seconds % 60;
+    $hours = (int)($minutes / 60);
+    $minutes = $minutes % 60;
+    $time = array(
+        str_pad($hours, 2, "0", STR_PAD_LEFT),
+        str_pad($minutes, 2, "0", STR_PAD_LEFT),
+        str_pad($seconds, 2, "0", STR_PAD_LEFT),
+    );
+    return implode(':', $time);
 }
 
 /**
@@ -295,15 +291,16 @@ return implode(':', $time);
  * @param integer $parent_id   id of the parent folder
  * @param integer $level       level in the tree (for identation)
  */
-function get_foldertree_options($parent_id=null, $level=0) {
+function get_foldertree_options($parent_id=null, $level='/') {
     global $options;
-    $options = array('0' => array('value' => get_string('home', 'artefact.file'), 'style' => 'padding-left:5px;'));
-    get_foldertree_recursion($parent_id, $level);
+    $current = $level . get_string('home', 'artefact.file');
+    $options = array('0' => $current);
+    get_foldertree_recursion($parent_id, $current);
     return $options;
 }
 
 // Helper function, used in above get_foldertree_options function...
-function get_foldertree_recursion($parent_id=null, $level=0) {
+function get_foldertree_recursion($parent_id=null, $level='/') {
     global $USER, $options;
     if (is_null($parent_id)) {
         $folders = get_records_sql_array('
@@ -320,10 +317,10 @@ function get_foldertree_recursion($parent_id=null, $level=0) {
         }
     if ($folders) {
         foreach ($folders as $folder) {
-            $padding = 10 * ($level+1) + 5;
-            $options[$folder->id] = array('value' => $folder->title, 'style' => 'padding-left:'. $padding .'px;');
+            $current = $level . '/' . $folder->title;
+            $options[$folder->id] = $current;
             // Recursion...
-            get_foldertree_recursion($folder->id, $level+1);
+            get_foldertree_recursion($folder->id, $current);
         }
     }
 }
@@ -354,7 +351,6 @@ function find_nearest($values, $item) {
     }
     return $out;
 }
-
 
 // Function to print out HTTP response status code and description
 function get_http_status($code) {
@@ -436,8 +432,6 @@ function get_http_status($code) {
         case 598: $msg = 'HTTP status: 598 Network read timeout error'; break;
         case 599: $msg = 'HTTP status: 599 Network connect timeout error'; break;
         default:  $msg = 'HTTP status: Unknown status with code ' . $code;
-	}
-	return $msg;
+    }
+    return $msg;
 }
-
-?>

@@ -5,7 +5,7 @@
  * @subpackage artefact-cloud
  * @author     Gregor Anzelj
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2012-2015 Gregor Anzelj, gregor.anzelj@gmail.com
+ * @copyright  (C) 2012-2016 Gregor Anzelj, info@povsod.com
  *
  */
 
@@ -26,6 +26,13 @@ $string['accessgrant'] = 'Grant access';
 $string['accessrevoke'] = 'Revoke access';
 $string['accessrevoked'] = 'Access revoked successfully';
 $string['httprequestcode'] = 'HTTP request unsuccessful with code: %s';
+
+$string['ticketnotreturned'] = 'There was no ticket';
+$string['requesttokennotreturned'] = 'There was no request token';
+$string['accesstokennotreturned'] = 'There was no access token';
+$string['accesstokensaved'] = 'Access token saved sucessfully';
+$string['accesstokensavefailed'] = 'Failed to save access token';
+$string['servererror'] = 'There was server error when downloading a file';
 
 $string['userinfo'] = 'User information';
 $string['username'] = 'User name';
@@ -59,6 +66,9 @@ $string['save'] = 'Save';
 $string['preview'] = 'Preview';
 $string['download'] = 'Download';
 
+$string['servicenotconfigured'] = 'This service is not configured yet.';
+$string['servicenotauthorised'] = 'This service is not authorised yet.';
+
 /* ===== jQuery DataTable strings ===== */
 $string['loading'] = 'Loading ...';
 $string['processing'] = 'Processing ...';
@@ -75,5 +85,3 @@ $string['infofiltered'] = '(filtered from _MAX_ total entries)'; // Don't tansla
 $string['lengthmenu'] = 'Show _MENU_ entries'; // Don't tanslate: _MENU_
 $string['search'] = 'Search:';
 $string['zerorecords'] = 'No matching entries found';
-
-?>

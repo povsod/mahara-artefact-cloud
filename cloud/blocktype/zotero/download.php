@@ -5,7 +5,7 @@
  * @subpackage blocktype-zotero
  * @author     Gregor Anzelj
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2014 Gregor Anzelj, gregor.anzelj@gmail.com
+ * @copyright  (C) 2012-2016 Gregor Anzelj, info@povsod.com
  *
  */
 
@@ -23,11 +23,11 @@ $format = 'rdf_zotero';
 
 $form = pieform(array(
     'name'       => 'exportform',
-    'renderer'   => 'maharatable',
-	'jsform' => true,
+    'jsform' => true,
     'plugintype' => 'artefact',
     'pluginname' => 'cloud',
-    //'configdirs' => array(get_config('libroot') . 'form/', get_config('docroot') . 'artefact/cloud/form/'),
+    //'template'   => 'saveform.php',
+    //'templatedir' => pieform_template_dir('saveform.php', 
     'elements'   => array(
         'id' => array(
             'type'  => 'hidden',
@@ -43,19 +43,19 @@ $form = pieform(array(
             'value' => null,
             'defaultvalue' => null,
             'options' => array(
-			    'bibtex' => 'BibTeX',
-				'bookmarks' => 'Netscape Bookmark(s)',
-				'coins' => 'COinS (ContextObjects in Spans)',
-				'csljson' => 'Citation Style Language',
-				'mods' => 'MODS (Metadata Object Description Schema)',
-				'refer' => 'Refer/BibIX',
-				'rdf_bibliontology' => 'Bibliographic Ontology RDF',
-				'rdf_dc' => 'Unqualified Dublin Core RDF',
-				'rdf_zotero' => 'Zotero RDF',
-				'ris' => 'RIS (Research Information Systems)',
-				'tei' => 'TEI (Text Encoding Initiative)',
-				'wikipedia' => 'Wikipedia Citation Templates',
-			),
+                'bibtex' => 'BibTeX',
+                'bookmarks' => 'Netscape Bookmark(s)',
+                'coins' => 'COinS (ContextObjects in Spans)',
+                'csljson' => 'Citation Style Language',
+                'mods' => 'MODS (Metadata Object Description Schema)',
+                'refer' => 'Refer/BibIX',
+                'rdf_bibliontology' => 'Bibliographic Ontology RDF',
+                'rdf_dc' => 'Unqualified Dublin Core RDF',
+                'rdf_zotero' => 'Zotero RDF',
+                'ris' => 'RIS (Research Information Systems)',
+                'tei' => 'TEI (Text Encoding Initiative)',
+                'wikipedia' => 'Wikipedia Citation Templates',
+            ),
             'separator' => '<br />',
             'rules'   => array(
                 'required' => true
@@ -76,12 +76,10 @@ $smarty->display('form.tpl');
 
 
 function exportform_submit(Pieform $form, $values) {
-	global $SESSION;
-	$id = $values['id'];
-	$type = $values['type'];
-	$format = $values['format'];
-	$SESSION->add_ok_msg(get_string('citationexported', 'blocktype.cloud/zotero'));
-	redirect(get_config('wwwroot') . 'artefact/cloud/blocktype/zotero/export.php?id='.$id.'&type='.$type.'&format='.$format);
+    global $SESSION;
+    $id = $values['id'];
+    $type = $values['type'];
+    $format = $values['format'];
+    $SESSION->add_ok_msg(get_string('citationexported', 'blocktype.cloud/zotero'));
+    redirect(get_config('wwwroot') . 'artefact/cloud/blocktype/zotero/export.php?id='.$id.'&type='.$type.'&format='.$format);
 }
-
-?>

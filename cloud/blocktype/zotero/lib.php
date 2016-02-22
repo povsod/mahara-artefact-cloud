@@ -5,7 +5,7 @@
  * @subpackage blocktype-zotero
  * @author     Gregor Anzelj
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2014 Gregor Anzelj, gregor.anzelj@gmail.com
+ * @copyright  (C) 2012-2016 Gregor Anzelj, info@povsod.com
  *
  */
 
@@ -114,8 +114,8 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
         $view    = new View($viewid);
         $ownerid = $view->get('owner');
 
-        $data = ArtefactTypeCloud::get_user_preferences('zotero', $ownerid);
-        if ($data) {
+        $consumer = self::get_service_consumer();
+        if (isset($consumer->usrprefs['access_token']) && !empty($consumer->usrprefs['access_token'])) {
             return array(
                 'zoterologo' => array(
                     'type' => 'html',
@@ -142,14 +142,14 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
                 ),
                 'bibstyle' => array(
                     'type'         => 'select',
-                    'labelhtml'    => get_string('bibliographystyle', 'blocktype.cloud/zotero'),
+                    'title'    => get_string('bibliographystyle', 'blocktype.cloud/zotero'),
                     'options'      => get_zotero_bibstyles(),
                     'defaultvalue' => (isset($configdata['bibstyle']) ? $configdata['bibstyle'] : null),
                     'class'        => ($configdata['usebibbase'] == 1 ? 'hidden' : null),
                 ),
                 'usebibbase' => array(
-                    'type'         => 'checkbox',
-                    'labelhtml'    => get_string('usebibbase', 'blocktype.cloud/zotero'),
+                    'type'         => 'switchbox',
+                    'title'    => get_string('usebibbase', 'blocktype.cloud/zotero'),
                     'defaultvalue' => (isset($configdata['usebibbase']) ? $configdata['usebibbase'] : null),
                 ),
             );
@@ -163,7 +163,7 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
                 'zoteroisconnect' => array(
                     'type' => 'cancel',
                     'value' => get_string('connecttozotero', 'blocktype.cloud/zotero'),
-                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/zotero/account.php?action=login',
+                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/zotero/account.php?action=login&view=' . $viewid,
                 ),
             );
         }
@@ -208,6 +208,9 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
         );
         $elements['applicationgeneral'] = array(
             'type' => 'fieldset',
+            'class' => 'last',
+            'collapsible' => true,
+            'collapsed' => false,
             'legend' => get_string('applicationgeneral', 'blocktype.cloud/zotero'),
             'elements' => array(
                 'applicationname' => array(
@@ -215,21 +218,20 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
                     'title'        => get_string('applicationname', 'blocktype.cloud/zotero'),
                     'defaultvalue' => get_config('sitename'),
                     'description'  => get_string('applicationnamedesc', 'blocktype.cloud/zotero'),
-                    'readonly'     => true,
                 ),
                 'consumerkey' => array(
                     'type'         => 'text',
                     'title'        => get_string('consumerkey', 'blocktype.cloud/zotero'),
                     'defaultvalue' => get_config_plugin('blocktype', 'zotero', 'consumerkey'),
                     'description'  => get_string('consumerkeydesc', 'blocktype.cloud/zotero'),
-                    'rules' => array('required' => true),
+                    'rules'        => array('required' => true),
                 ),
                 'consumersecret' => array(
                     'type'         => 'text',
                     'title'        => get_string('consumersecret', 'blocktype.cloud/zotero'),
                     'defaultvalue' => get_config_plugin('blocktype', 'zotero', 'consumersecret'),
                     'description'  => get_string('consumersecretdesc', 'blocktype.cloud/zotero'),
-                    'rules' => array('required' => true),
+                    'rules'        => array('required' => true),
                 ),
                 'applicationtype' => array(
                     'type'         => 'radio',
@@ -237,8 +239,8 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
                     'defaultvalue' => 'browser',
                     'description'  => get_string('applicationtypedesc', 'blocktype.cloud/zotero'),
                     'options'      => array(
-                        'client'  => 'Client',
-                        'browser' => 'Browser',
+                        'client'   => 'Client',
+                        'browser'  => 'Browser',
                     ),
                     'disabled'     => true,
                 ),
@@ -247,21 +249,18 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
                     'title'        => get_string('applicationweb', 'blocktype.cloud/zotero'),
                     'defaultvalue' => get_config('wwwroot'),
                     'description'  => get_string('applicationwebdesc', 'blocktype.cloud/zotero'),
-                    'size'         => 50,
-                    'readonly'     => true,
                 ),
                 'redirecturl' => array(
                     'type'         => 'text',
                     'title'        => get_string('redirecturl', 'blocktype.cloud/zotero'),
                     'defaultvalue' => get_config('wwwroot') . 'artefact/cloud/blocktype/zotero/callback.php',
                     'description'  => get_string('redirecturldesc', 'blocktype.cloud/zotero'),
-                    'size'         => 70,
-                    'readonly'     => true,
-                    'rules' => array('required' => true),
+                    'rules'        => array('required' => true),
                 ),
             )
         );
         return array(
+            'class' => 'panel panel-body',
             'elements' => $elements,
         );
 
@@ -289,13 +288,14 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
         $service->ssl      = true;
         $service->version  = 2; // API Version
         $service->apiurl   = 'https://api.zotero.org/';
+        $service->wwwurl   = 'https://www.zotero.org/';
         $service->oauthurl = 'https://www.zotero.org/oauth/';
         $service->key      = get_config_plugin('blocktype', 'zotero', 'consumerkey');
         $service->secret   = get_config_plugin('blocktype', 'zotero', 'consumersecret');
-		// If SSL is set then force SSL URL for callback
-		if ($service->ssl) {
+        // If SSL is set then force SSL URL for callback
+        if ($service->ssl) {
             $wwwroot = str_replace('http://', 'https://', get_config('wwwroot'));
-		}
+        }
         $service->callback = get_config('wwwroot') . 'artefact/cloud/blocktype/zotero/callback.php';
         $service->usrprefs = ArtefactTypeCloud::get_user_preferences('zotero', $owner);
         return $service;
@@ -303,7 +303,15 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
 
     // SEE: http://www.zotero.org/support/dev/server_api/read_api
     public function service_list() {
+        global $SESSION;
         $consumer = self::get_service_consumer();
+        $service = new StdClass();
+        $service->name = 'zotero';
+        $service->url = 'http://www.zotero.com';
+        $service->auth = false;
+        $service->manage = false;
+        $service->pending = false;
+
         if (!empty($consumer->key) && !empty($consumer->secret)) {
             if (isset($consumer->usrprefs['oauth_token']) && !empty($consumer->usrprefs['oauth_token'])) {
                 // Check if the oauth_token has been revoked or not...
@@ -335,39 +343,20 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
                     CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
                 );
                 $result = mahara_http_request($config);
-                if ($result->info['http_code'] == 200 && !empty($result->data)) {
+                if (isset($result->data) && !empty($result->data) &&
+                    isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
                     // oauth_token hasn't been revoked yet, so...
-                    return array(
-                        'service_name'  => 'zotero',
-                        'service_url'   => 'http://www.zotero.com',
-                        'service_auth'  => true,
-                        'service_manage' => true,
-                        //'revoke_access' => false,
-                    );
+                    $service->auth = true;
+                    $service->manage = true;
+                    $service->account = self::account_info();
                 }
-                else {
-                    // oauth_token has been revoked, so...
-                    return array(
-                        'service_name'  => 'zotero',
-                        'service_url'   => 'http://www.zotero.com',
-                        'service_auth'  => false,
-                        'service_manage' => false,
-                        //'revoke_access' => false,
-                    );
-                }
-            }
-            else {
-                return array(
-                    'service_name'  => 'zotero',
-                    'service_url'   => 'http://www.zotero.com',
-                    'service_auth'  => false,
-                    //'revoke_access' => false,
-                );
             }
         }
         else {
-            throw new ConfigException('Can\'t find Zotero consumer key and/or consumer secret.');
+             $service->pending = true;
+           $SESSION->add_error_msg('Can\'t find Zotero consumer key and/or consumer secret.');
         }
+        return $service;
     }
     
     public function request_token() {
@@ -403,7 +392,8 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
                 CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
             );
             $result = mahara_http_request($config);
-            if ($result->info['http_code'] == 200 && !empty($result->data)) {
+            if (isset($result->data) && !empty($result->data) &&
+                isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
                 // Store request_token (oauth_token) and request_token_secret (outh_token_secret)
                 // We'll need it later...
                 $body = substr($result->data, $result->info['header_size']);
@@ -412,16 +402,16 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
                 redirect($consumer->oauthurl.'authorize?'.rfc3986_decode($body).'&oauth_callback='.$consumer->callback);
             }
             else {
-                $SESSION->add_error_msg(get_string('requesttokennotreturned', 'blocktype.cloud/zotero'));
+                $SESSION->add_error_msg(get_string('requesttokennotreturned', 'artefact.cloud'));
             }
         }
         else {
-            throw new ConfigException('Can\'t find Zotero consumer key and/or consumer secret.');
+            $SESSION->add_error_msg('Can\'t find Zotero consumer key and/or consumer secret.');
         }
     }
 
     public function access_token($token) {
-        global $USER;
+        global $USER, $SESSION;
         $consumer = self::get_service_consumer();
         if (!empty($consumer->key) && !empty($consumer->secret)) {
             $url = $consumer->oauthurl.'access';
@@ -454,7 +444,8 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
                 CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
             );
             $result = mahara_http_request($config);
-            if ($result->info['http_code'] == 200 && !empty($result->data)) {
+            if (isset($result->data) && !empty($result->data) &&
+                isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
                 // Store access_token (oauth_token) and access_token_secret (outh_token_secret)
                 // We'll need it for all API calls...
                 $body = substr($result->data, $result->info['header_size']);
@@ -462,11 +453,13 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
                 ArtefactTypeCloud::set_user_preferences('zotero', $USER->get('id'), $prefs);
             }
             else {
-                $SESSION->add_error_msg(get_http_status($result->info['http_code']));
+                $httpstatus = get_http_status($result->info['http_code']);
+                $SESSION->add_error_msg($httpstatus);
+                log_warn($httpstatus);
             }
         }
         else {
-            throw new ConfigException('Can\'t find Zotero consumer key and/or consumer secret.');
+            $SESSION->add_error_msg('Can\'t find Zotero consumer key and/or consumer secret.');
         }
     }
 
@@ -482,7 +475,20 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
     
     // SEE: http://www.zotero.org/support/dev/server_api/read_api
     public function account_info() {
+        global $SESSION;
         $consumer = self::get_service_consumer();
+
+        $info = new StdClass();
+        $info->service_name = 'zotero';
+        $info->service_auth = false;
+        $info->user_id      = null;
+        $info->user_name    = null;
+        $info->user_email   = null;
+        $info->user_profile = null;
+        $info->space_used   = null;
+        $info->space_amount = null;
+        $info->space_ratio  = null;
+
         if (!empty($consumer->key) && !empty($consumer->secret)) {
             $url = $consumer->apiurl.'users/'.$consumer->usrprefs['userID'].'/keys/'.$consumer->usrprefs['oauth_token'];
             $method = 'GET';
@@ -511,33 +517,30 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
                 CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
             );
             $result = mahara_http_request($config);
-            if ($result->info['http_code'] == 200 && !empty($result->data)) {
+            if (isset($result->data) && !empty($result->data) &&
+                isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
                 $data = json_decode($result->data);
-                return array(
-                    'service_name' => 'zotero',
-                    'service_auth' => true,
-                    'user_id'      => $consumer->usrprefs['userID'],
-                    'user_name'    => $consumer->usrprefs['username'],
-                    'space_used'   => null,
-                    'space_amount' => null,
-                    'space_ratio'  => null,
-                );
+
+                $info->service_name = 'zotero';
+                $info->service_auth = true;
+                $info->user_id      = $consumer->usrprefs['userID'];
+                $info->user_name    = $consumer->usrprefs['username'];
+                $info->user_profile = $consumer->wwwurl.$consumer->usrprefs['username'];
+                $info->space_used   = null;
+                $info->space_amount = null;
+                $info->space_ratio  = null;
+                return $info;
             }
             else {
-                return array(
-                    'service_name' => 'zotero',
-                    'service_auth' => false,
-                    'user_id'      => null,
-                    'user_name'    => null,
-                    'space_used'   => null,
-                    'space_amount' => null,
-                    'space_ratio'  => null,
-                );
+                $httpstatus = get_http_status($result->info['http_code']);
+                $SESSION->add_error_msg($httpstatus);
+                log_warn($httpstatus);
             }
          }
          else {
-            throw new ConfigException('Can\'t find Zotero consumer key and/or consumer secret.');
+            $SESSION->add_error_msg('Can\'t find Zotero consumer key and/or consumer secret.');
         }
+        return $info;
     }
     
     /*
@@ -550,7 +553,7 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
      *      get_filelist basically corresponds to get_formatted_list_of_references_in_collection!
      */
     public function get_filelist($folder_id='0', $style='apa', $owner=null, $tag=null) {
-        global $THEME;
+        global $THEME, $SESSION;
 
         // Get owner since this could be part of pubically accessible Mahara page...
         $consumer = self::get_service_consumer();
@@ -597,15 +600,18 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
                 CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
             );
             $result = mahara_http_request($config);
-            if ($result->info['http_code'] == 200 && !empty($result->data)) {
+            if (isset($result->data) && !empty($result->data) &&
+                isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
                 return substr($result->data, $result->info['header_size']);
             }
             else {
-                $SESSION->add_error_msg(get_http_status($result->info['http_code']));
+                $httpstatus = get_http_status($result->info['http_code']);
+                $SESSION->add_error_msg($httpstatus);
+                log_warn($httpstatus);
             }
         }
         else {
-            throw new ConfigException('Can\'t find Zotero consumer key and/or consumer secret.');
+            $SESSION->add_error_msg('Can\'t find Zotero consumer key and/or consumer secret.');
         }
     }
     
@@ -658,11 +664,11 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
         }
 
         // Get folder parent...
-		$parent_id = '0'; // either 'root' folder itself or parent is 'root' folder
-		$folder = self::get_folder_info($folder_id);
-		if (!empty($folder['parent_id'])) {
-			$parent_id = $folder['parent_id'];
-		}
+        $parent_id = '0'; // either 'root' folder itself or parent is 'root' folder
+        $folder = self::get_folder_info($folder_id);
+        if (!empty($folder['parent_id'])) {
+            $parent_id = $folder['parent_id'];
+        }
 
         // Get folder contents...
         $consumer = self::get_service_consumer();
@@ -708,7 +714,8 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
                 CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
             );
             $result = mahara_http_request($config);
-            if ($result->info['http_code'] == 200 && !empty($result->data)) {
+            if (isset($result->data) && !empty($result->data) &&
+                isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
                 $xml = simplexml_load_string(substr($result->data, $result->info['header_size']));
                 //Use that namespace
                 $namespaces = $xml->getNameSpaces(true);
@@ -723,22 +730,25 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
                 if ($folder_id != '0') {
                     $type        = 'parentfolder';
                     $foldername  = get_string('parentfolder', 'artefact.file');
-                    $title       = '<a class="changefolder" href="javascript:void(0)" id="' . $parent_id . '" title="' . get_string('gotofolder', 'artefact.file', $foldername) . '"><img src="' . $THEME->get_url('images/parentfolder.png') . '"></a>';
-                    $output['aaData'][] = array('', $title, '', $type);
+                    $icon        = '<span class="icon-level-up icon icon-lg"></span>';
+                    $title       = '<a class="changefolder" href="javascript:void(0)" id="' . $parent_id . '" title="' . get_string('gotofolder', 'artefact.file', $foldername) . '">' . $foldername . '</a>';
+                    $output['data'][] = array($icon, $title, '', $type);
                 }
                 // or 'library items' (= items in the top level of Library) row entry to jQuery Datatable...
                 else {
                     $type  = 'parentfolder';
-                    $icon  = '<img src="' . $THEME->get_url('images/folder.png') . '">';
+                    $icon  = '<span class="icon-archive icon icon-lg"></span>';
                     $title = '<span class="changefolder">'. get_string('allreferences', 'blocktype.cloud/zotero') . '</span>';
                     if ($selectFolders) {
                         $selected = (in_array('0', $artefacts) ? ' checked' : '');
                         $controls = '<input type="' . ($selectMultiple ? 'checkbox' : 'radio') . '" name="artefacts[]" id="artefacts[]" value="0"' . $selected . '>';
                     }
                     else {
-                        $controls  = '<a href="export.php?id=0&type=collection&format=' . $exportformat . '" title="' . get_string('cite', 'blocktype.cloud/zotero') . '"><img src="' . $THEME->get_url('images/btn_export.png') . '" alt="' . get_string('cite', 'blocktype.cloud/zotero') . '"></a>';
+                        $controls  = '<div class="btn-group">';
+                        $controls .= '<a class="btn btn-default btn-xs" href="export.php?id=0&type=collection&format=' . $exportformat . '" title="' . get_string('cite', 'blocktype.cloud/zotero') . '"><span class="icon-download icon icon-lg"></span></a>';
+                        $controls .= '</div>';
                     }
-                    $output['aaData'][] = array($icon, $title, $controls, $type);
+                    $output['data'][] = array($icon, $title, $controls, $type);
                 }
 
                 // Add folders/collections
@@ -752,16 +762,18 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
                         if (isset($xml->entry[$i]->id) && $parent_id == $folder_id) {
                             $id    = basename($xml->entry[$i]->id);
                             $type  = 'folder';
-                            $icon  = '<img src="' . $THEME->get_url('images/folder.png') . '">';
+                            $icon  = '<span class="icon-folder-open icon icon-lg"></span>';
                             $title = '<a class="changefolder" href="javascript:void(0)" id="' . $id . '" title="' . get_string('gotofolder', 'artefact.file', $content->name) . '">' . $content->name . '</a>';
                             if ($selectFolders) {
                                 $selected = (in_array('folder-'.$id, $artefacts) ? ' checked' : '');
                                 $controls = '<input type="' . ($selectMultiple ? 'checkbox' : 'radio') . '" name="artefacts[]" id="artefacts[]" value="folder-' . $id . '"' . $selected . '>';
                             }
                             else {
-                                $controls  = '<a title="' . get_string('cite', 'blocktype.cloud/zotero') . '" href="export.php?id=' . $id . '&type=collection&format=' . $exportformat . '" title="' . get_string('cite', 'blocktype.cloud/zotero') . '"><img src="' . $THEME->get_url('images/btn_export.png') . '" alt="' . get_string('cite', 'blocktype.cloud/zotero') . '"></a>';
+                                $controls  = '<div class="btn-group">';
+                                $controls .= '<a class="btn btn-default btn-xs" title="' . get_string('cite', 'blocktype.cloud/zotero') . '" href="export.php?id=' . $id . '&type=collection&format=' . $exportformat . '" title="' . get_string('cite', 'blocktype.cloud/zotero') . '"><span class="icon-download icon icon-lg"></span></a>';
+                                $controls .= '</div>';
                             }
-                            $output['aaData'][] = array($icon, $title, $controls, $type);
+                            $output['data'][] = array($icon, $title, $controls, $type);
                             $count++;
                         }
                     }
@@ -785,7 +797,8 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
                     CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
                 );
                 $result2 = mahara_http_request($config2);
-                if ($result2->info['http_code'] == 200 && !empty($result2->data)) {
+                if (isset($result2->data) && !empty($result2->data) &&
+                    isset($result2->info) && !empty($result2->info) && $result2->info['http_code'] == 200) {
                     $xml = simplexml_load_string(substr($result2->data, $result2->info['header_size']));
                     //Use that namespace
                     $namespaces = $xml->getNameSpaces(true);
@@ -800,23 +813,27 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
                             if (isset($xml->entry[$i]->id) && $content->itemType != 'attachment') {
                                 $id    = basename($xml->entry[$i]->id);
                                 $type  = 'file';
-                                $icon  = '<img src="' . $THEME->get_url('images/file.png') . '">';
+                                $icon  = '<span class="icon-file icon icon-lg"></span>';
                                 $title = '<a class="filedetails" href="' . get_config('wwwroot') . 'artefact/cloud/blocktype/zotero/details.php?id=' . $id . '" title="' . get_string('filedetails', 'artefact.cloud', $content->title) . '">' . $content->title . '</a>';
                                 if ($selectFiles) {
                                     $selected = (in_array('file-'.$id, $artefacts) ? ' checked' : '');
                                     $controls = '<input type="' . ($selectMultiple ? 'checkbox' : 'radio') . '" name="artefacts[]" id="artefacts[]" value="file-' . $id . '"' . $selected . '>';
                                 }
                                 else {
-                                    $controls  = '<a href="export.php?id=' . $id . '&type=item&format=' . $exportformat . '" title="' . get_string('cite', 'blocktype.cloud/zotero') . '"><img src="' . $THEME->get_url('images/btn_export.png') . '" alt="' . get_string('cite', 'blocktype.cloud/zotero') . '"></a>';
+                                    $controls  = '<div class="btn-group">';
+                                    $controls .= '<a class="btn btn-default btn-xs" href="export.php?id=' . $id . '&type=item&format=' . $exportformat . '" title="' . get_string('cite', 'blocktype.cloud/zotero') . '"><span class="icon-download icon icon-lg"></span></a>';
+                                    $controls .= '</div>';
                                 }
-                                $output['aaData'][] = array($icon, $title, $controls, $type);
+                                $output['data'][] = array($icon, $title, $controls, $type);
                                 $count++;
                             }
                         }
                     }
                 }
                 else {
-                    $SESSION->add_error_msg(get_http_status($result->info['http_code']));
+                    $httpstatus = get_http_status($result2->info['http_code']);
+                    $SESSION->add_error_msg($httpstatus);
+                    log_warn($httpstatus);
                 }
                 
                 // Get all tags...
@@ -837,7 +854,8 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
                     CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
                 );
                 $result3 = mahara_http_request($config3);
-                if ($result3->info['http_code'] == 200 && !empty($result3->data)) {
+                if (isset($result3->data) && !empty($result3->data) &&
+                    isset($result3->info) && !empty($result3->info) && $result3->info['http_code'] == 200) {
                     $xml = simplexml_load_string(substr($result3->data, $result3->info['header_size']));
                     //Use that namespace
                     $namespaces = $xml->getNameSpaces(true);
@@ -858,20 +876,24 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
                     foreach ($tags as $tag) {
                         // Show tags
                         $type  = 'a_tag';
-                        $icon  = '<img src="' . get_config('wwwroot') . 'artefact/cloud/theme/raw/static/images/tag.png">';
+                        $icon  = '<span class="icon-tag icon icon-lg"></span>';
                         $title = $tag;
                         if ($selectFolders) {
                             $selected = (in_array('tag-'.$tag, $artefacts) ? ' checked' : '');
                             $controls = '<input type="' . ($selectMultiple ? 'checkbox' : 'radio') . '" name="artefacts[]" id="artefacts[]" value="tag-' . $tag . '"' . $selected . '>';
                         }
                         else {
-                            $controls  = '<a href="export.php?id=' . $tag . '&type=tag&format=' . $exportformat . '" title="' . get_string('cite', 'blocktype.cloud/zotero') . '"><img src="' . $THEME->get_url('images/btn_export.png') . '" alt="' . get_string('cite', 'blocktype.cloud/zotero') . '"></a>';
+                            $controls  = '<div class="btn-group">';
+                            $controls .= '<a class="btn btn-default btn-xs" href="export.php?id=' . $tag . '&type=tag&format=' . $exportformat . '" title="' . get_string('cite', 'blocktype.cloud/zotero') . '"><span class="icon-download icon icon-lg"></span></a>';
+                            $controls .= '</div>';
                         }
-                        $output['aaData'][] = array($icon, $title, $controls, $type);
+                        $output['data'][] = array($icon, $title, $controls, $type);
                     }
                 }
                 else {
-                    $SESSION->add_error_msg(get_http_status($result->info['http_code']));
+                    $httpstatus = get_http_status($result3->info['http_code']);
+                    $SESSION->add_error_msg($httpstatus);
+                    log_warn($httpstatus);
                 }
                 
                 $output['iTotalRecords'] = $count;
@@ -879,11 +901,13 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
                 return json_encode($output);
             }
             else {
-                $SESSION->add_error_msg(get_http_status($result->info['http_code']));
+                $httpstatus = get_http_status($result->info['http_code']);
+                $SESSION->add_error_msg($httpstatus);
+                log_warn($httpstatus);
             }
         }
         else {
-            throw new ConfigException('Can\'t find Zotero consumer key and/or consumer secret.');
+            $SESSION->add_error_msg('Can\'t find Zotero consumer key and/or consumer secret.');
         }
     }
     
@@ -895,7 +919,7 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
         if (!empty($consumer->key) && !empty($consumer->secret)) {
             // Init collection title and data variables...
             $collectionTitle = null;
-			$colectionParent = 0;
+            $colectionParent = 0;
             $collectionData  = array();
             
             // Get collection title...
@@ -936,18 +960,21 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
             );
             $result = mahara_http_request($config);
             if (!empty($result) && strlen($folder_id) > 0) {
-                if ($result->info['http_code'] == 200 && !empty($result->data)) {
+                if (isset($result->data) && !empty($result->data) &&
+                    isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
                     $xml = simplexml_load_string(substr($result->data, $result->info['header_size']));
                     $collectionTitle = $xml->title;
-					$content = json_decode($xml->content);
-					if (!empty($content)) {
-						$collectionParent = $content->parentCollection;
-					} else {
-						$collectionParent = '0';
-					}
+                    $content = json_decode($xml->content);
+                    if (!empty($content)) {
+                        $collectionParent = $content->parentCollection;
+                    } else {
+                        $collectionParent = '0';
+                    }
                 }
                 else {
-                    $SESSION->add_error_msg(get_http_status($result->info['http_code']));
+                    $httpstatus = get_http_status($result->info['http_code']);
+                    $SESSION->add_error_msg($httpstatus);
+                    log_warn($httpstatus);
                 }
             }
             else {
@@ -992,7 +1019,8 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
             );
             $result = mahara_http_request($config);
             if (!empty($result) && strlen($folder_id) > 0) {
-                if ($result->info['http_code'] == 200 && !empty($result->data)) {
+                if (isset($result->data) && !empty($result->data) &&
+                    isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
                     $xml = simplexml_load_string(substr($result->data, $result->info['header_size']));
                     //Use that namespace
                     $namespaces = $xml->getNameSpaces(true);
@@ -1036,7 +1064,9 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
                     return array('title' => $collectionTitle, 'id' => $folder_id, 'parent_id' => $collectionParent, 'items' => $collectionData);
                 }
                 else {
-                    $SESSION->add_error_msg(get_http_status($result->info['http_code']));
+                    $httpstatus = get_http_status($result->info['http_code']);
+                    $SESSION->add_error_msg($httpstatus);
+                    log_warn($httpstatus);
                 }
             }
             else {
@@ -1044,7 +1074,7 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
             }
         }
         else {
-            throw new ConfigException('Can\'t find Zotero consumer key and/or consumer secret.');
+            $SESSION->add_error_msg('Can\'t find Zotero consumer key and/or consumer secret.');
         }
     }
     
@@ -1086,7 +1116,8 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
             );
             $result = mahara_http_request($config);
             if (!empty($result) && strlen($file_id) > 0) {
-                if ($result->info['http_code'] == 200 && !empty($result->data)) {
+                if (isset($result->data) && !empty($result->data) &&
+                    isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
                     $xml = simplexml_load_string(substr($result->data, $result->info['header_size']));
                     $content = json_decode($xml->content);
 
@@ -1125,7 +1156,9 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
                     return $info;
                 }
                 else {
-                    $SESSION->add_error_msg(get_http_status($result->info['http_code']));
+                    $httpstatus = get_http_status($result->info['http_code']);
+                    $SESSION->add_error_msg($httpstatus);
+                    log_warn($httpstatus);
                 }
             }
             else {
@@ -1133,7 +1166,7 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
             }
         }
         else {
-            throw new ConfigException('Can\'t find Zotero consumer key and/or consumer secret.');
+            $SESSION->add_error_msg('Can\'t find Zotero consumer key and/or consumer secret.');
         }
     }
 
@@ -1172,7 +1205,7 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
                 'format'  => $format,
                 'limit' => 99,
                 'style' => 'apa',
-				'tag' => $tag,
+                'tag' => $tag,
             );
             $params['oauth_signature'] = oauth_compute_hmac_sig($method, $url, $params, $consumer->secret, $consumer->usrprefs['oauth_token_secret']);
             $header = array();
@@ -1191,12 +1224,15 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
             );
             $result = mahara_http_request($config);
             if (!empty($result) && strlen($id) > 0) {
-                if ($result->info['http_code'] == 200 && !empty($result->data)) {
+                if (isset($result->data) && !empty($result->data) &&
+                    isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
                     $content = substr($result->data, $result->info['header_size']);
                     return $content;
                 }
                 else {
-                    $SESSION->add_error_msg(get_http_status($result->info['http_code']));
+                    $httpstatus = get_http_status($result->info['http_code']);
+                    $SESSION->add_error_msg($httpstatus);
+                    log_warn($httpstatus);
                 }
             }
             else {
@@ -1204,7 +1240,7 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
             }
         }
         else {
-            throw new ConfigException('Can\'t find Zotero consumer key and/or consumer secret.');
+            $SESSION->add_error_msg('Can\'t find Zotero consumer key and/or consumer secret.');
         }
     }
 
@@ -1245,17 +1281,20 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
             );
             $result = mahara_http_request($config);
             if (!empty($result) && strlen($id) > 0) {
-                if ($result->info['http_code'] == 200 && !empty($result->data)) {
+                if (isset($result->data) && !empty($result->data) &&
+                    isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
                     $content = substr($result->data, $result->info['header_size']);
                     return $content;
                 }
                 else {
-                    $SESSION->add_error_msg(get_http_status($result->info['http_code']));
+                    $httpstatus = get_http_status($result->info['http_code']);
+                    $SESSION->add_error_msg($httpstatus);
+                    log_warn($httpstatus);
                 }
             }
         }
         else {
-            throw new ConfigException('Can\'t find Zotero consumer key and/or consumer secret.');
+            $SESSION->add_error_msg('Can\'t find Zotero consumer key and/or consumer secret.');
         }
     }
 
@@ -1296,5 +1335,3 @@ function get_zotero_bibstyles() {
     uasort($bibstyles, 'strcoll');
     return $bibstyles;
 }
-
-?>

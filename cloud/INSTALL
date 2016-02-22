@@ -1,4 +1,0 @@
-For this plugin to work correctly (work at all) you need to edit htdocs/view/blocks.php core Mahara file.
-
-You have to add 'artefact/cloud/datatables/js/jquery.dataTables.js' string to javascript array around line 149, so it looks like this:
-$javascript = array('views', 'tinymce', 'paginator', 'jquery', 'tablerenderer', 'artefact/file/js/filebrowser.js', 'artefact/cloud/datatables/js/jquery.dataTables.js', 'lib/pieforms/static/core/pieforms.js'); 

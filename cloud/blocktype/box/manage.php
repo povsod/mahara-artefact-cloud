@@ -5,7 +5,7 @@
  * @subpackage blocktype-box
  * @author     Gregor Anzelj
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2012-2015 Gregor Anzelj, gregor.anzelj@gmail.com
+ * @copyright  (C) 2012-2016 Gregor Anzelj, info@povsod.com
  *
  */
 
@@ -22,7 +22,6 @@ require_once('lib.php');
 
 $manageform = pieform(array(
     'name'       => 'manageform',
-    'renderer'   => 'datatables',
     'plugintype' => 'artefact',
     'pluginname' => 'cloud',
     'configdirs' => array(get_config('libroot') . 'form/', get_config('docroot') . 'artefact/cloud/form/'),
@@ -49,6 +48,4 @@ $manageform = pieform(array(
 $smarty = smarty();
 $smarty->assign('SERVICE', 'box');
 $smarty->assign('manageform', $manageform);
-$smarty->display('blocktype:box:manage.tpl');
-
-?>
+$smarty->display('artefact:cloud:manage.tpl');

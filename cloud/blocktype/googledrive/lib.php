@@ -5,7 +5,7 @@
  * @subpackage blocktype-googledrive
  * @author     Gregor Anzelj
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2012-2015 Gregor Anzelj, gregor.anzelj@gmail.com
+ * @copyright  (C) 2012-2016 Gregor Anzelj, info@povsod.com
  *
  */
 
@@ -46,6 +46,7 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
         $height   = (!empty($configdata['height']) ? $configdata['height'] : 360);
         
         $smarty = smarty_core();
+        $smarty->assign('SERVICE', 'googledrive');
         switch ($display) {
             case 'embed':
                 $html = '';
@@ -59,14 +60,19 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
                 break;
             case 'list':
             default:
-			    $file = self::get_file_info($selected[0]);
-				$folder = $file['parent_id'];
+                if (!empty($selected)) {
+                    $file = self::get_file_info($selected[0]);
+                    $folder = $file['parent_id'];
+                }
+                else {
+                    $folder = 0;
+                }
                 $data = self::get_filelist($folder, $selected, $ownerid);
                 $smarty->assign('folders', $data['folders']);
                 $smarty->assign('files', $data['files']);
         }
         $smarty->assign('viewid', $viewid);
-        return $smarty->fetch('blocktype:googledrive:' . $display . '.tpl');
+        return $smarty->fetch('artefact:cloud:' . $display . '.tpl');
     }
 
     public static function has_instance_config() {
@@ -84,8 +90,8 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
         $view = new View($viewid);
         $ownerid = $view->get('owner');
         
-        $data = ArtefactTypeCloud::get_user_preferences('google', $ownerid);
-        if ($data) {
+        $consumer = self::get_service_consumer();
+        if (isset($consumer->usrprefs['access_token']) && !empty($consumer->usrprefs['access_token'])) {
             return array(
                 'googledrivelogo' => array(
                     'type' => 'html',
@@ -113,11 +119,9 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
                 'display' => array(
                     'type' => 'radio',
                     'title' => get_string('display','blocktype.cloud/googledrive'),
-                    //'description' => get_string('displaydesc','blocktype.cloud/googledrive') . '<br>' . get_string('displaydesc2','blocktype.cloud/googledrive'),
                     'defaultvalue' => (!empty($configdata['display']) ? hsc($configdata['display']) : 'list'),
                     'options' => array(
                         'list'  => get_string('displaylist','blocktype.cloud/googledrive'),
-                        //'icon'  => get_string('displayicon','blocktype.cloud/googledrive'),
                         'embed' => get_string('displayembed','blocktype.cloud/googledrive')
                     ),
                     'separator' => '<br />',
@@ -166,7 +170,7 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
                 'googledriveisconnect' => array(
                     'type' => 'cancel',
                     'value' => get_string('connecttogoogledrive', 'blocktype.cloud/googledrive'),
-                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/googledrive/account.php?action=login',
+                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/googledrive/account.php?action=login&view=' . $viewid,
                 ),
             );
         }
@@ -205,36 +209,19 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
     }
 
     public static function get_config_options() {
+        global $THEME;
         $wwwroot = str_replace('http', 'https', get_config('wwwroot'));
         $wwwroot = str_replace('httpss', 'https', get_config('wwwroot'));
         $elements = array();
         $elements['applicationdesc'] = array(
             'type'  => 'html',
-            'value' => get_string('applicationdesc', 'blocktype.cloud/googledrive', '<a href="https://cloud.google.com/console#/project" target="_blank">', '</a>'),
-        );
-        $elements['brandinginformation'] = array(
-            'type' => 'fieldset',
-            'legend' => get_string('brandinginformation', 'blocktype.cloud/googledrive'),
-            'elements' => array(
-                'applicationname' => array(
-                    'type'         => 'text',
-                    'title'        => get_string('productname', 'blocktype.cloud/googledrive'),
-                    'defaultvalue' => get_config('sitename'),
-                    'description'  => get_string('productnamedesc', 'blocktype.cloud/googledrive'),
-                    'readonly'     => true,
-                ),
-                'applicationicon' => array(
-                    'type'         => 'html',
-                    'title'        => get_string('productlogo', 'blocktype.cloud/googledrive'),
-                    'value'        => '<table border="0"><tr style="text-align:center">
-                                       <td style="vertical-align:bottom"><img src="'.get_config('wwwroot').'artefact/cloud/icons/120x060.png" border="0" style="border:1px solid #ccc"><br>120x60</td>
-                                       </table>',
-                    'description'  => get_string('productlogodesc', 'blocktype.cloud/googledrive'),
-                ),
-            )
+            'value' => get_string('applicationdesc', 'blocktype.cloud/googledrive', '<a href="https://console.cloud.google.com/apis/credentials" target="_blank">', '</a>'),
         );
         $elements['webappsclientid'] = array(
             'type' => 'fieldset',
+            'class' => 'first',
+            'collapsible' => true,
+            'collapsed' => false,
             'legend' => get_string('webappsclientid', 'blocktype.cloud/googledrive'),
             'elements' => array(
                 'consumerkey' => array(
@@ -242,29 +229,70 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
                     'title'        => get_string('consumerkey', 'blocktype.cloud/googledrive'),
                     'defaultvalue' => get_config_plugin('blocktype', 'googledrive', 'consumerkey'),
                     'description'  => get_string('consumerkeydesc', 'blocktype.cloud/googledrive'),
-                    'size' => 50,
-                    'rules' => array('required' => true),
+                    'rules'        => array('required' => true),
                 ),
                 'consumersecret' => array(
                     'type'         => 'text',
                     'title'        => get_string('consumersecret', 'blocktype.cloud/googledrive'),
                     'defaultvalue' => get_config_plugin('blocktype', 'googledrive', 'consumersecret'),
                     'description'  => get_string('consumersecretdesc', 'blocktype.cloud/googledrive'),
-                    'size' => 50,
-                    'rules' => array('required' => true),
+                    'rules'        => array('required' => true),
                 ),
                 'redirecturl' => array(
                     'type'         => 'text',
                     'title'        => get_string('redirecturl', 'blocktype.cloud/googledrive'),
                     'defaultvalue' => $wwwroot . 'artefact/cloud/blocktype/googledrive/callback.php',
                     'description'  => get_string('redirecturldesc', 'blocktype.cloud/googledrive'),
-                    'size' => 70,
-                    'readonly' => true,
-                    'rules' => array('required' => true),
+                    'rules'        => array('required' => true),
+                ),
+            )
+        );
+        $elements['brandinginformation'] = array(
+            'type' => 'fieldset',
+            'class' => 'last',
+            'collapsible' => true,
+            'collapsed' => false,
+            'legend' => get_string('brandinginformation', 'blocktype.cloud/googledrive'),
+            'elements' => array(
+                'applicationname' => array(
+                    'type'         => 'text',
+                    'title'        => get_string('productname', 'blocktype.cloud/googledrive'),
+                    'defaultvalue' => get_config('sitename'),
+                    'description'  => get_string('productnamedesc', 'blocktype.cloud/googledrive'),
+                ),
+                'applicationweb' => array(
+                    'type'         => 'text',
+                    'title'        => get_string('productweb', 'blocktype.cloud/googledrive'),
+                    'defaultvalue' => get_config('wwwroot'),
+                    'description'  => get_string('productwebdesc', 'blocktype.cloud/googledrive'),
+                ),
+                'applicationiconurl' => array(
+                    'type'         => 'text',
+                    'title'        => get_string('productlogo', 'blocktype.cloud/googledrive'),
+                    'defaultvalue' => get_config('wwwroot') . 'artefact/cloud/theme/raw/static/images/120x120.png',
+                ),
+                'applicationicon' => array(
+                    'type'         => 'html',
+                    'title'        => null,
+                    'value'        => '<table border="0"><tr style="text-align:center">
+                                       <td style="vertical-align:bottom"><img src="'.$THEME->get_url('images/120x120.png', false, 'artefact/cloud').'" border="0" style="border:1px solid #ccc"><br>120x120</td>
+                                       </table>',
+                    'description'  => get_string('productlogodesc', 'blocktype.cloud/googledrive'),
+                ),
+                'privacyurl' => array(
+                    'type'         => 'text',
+                    'title'        => get_string('privacyurl', 'blocktype.cloud/googledrive'),
+                    'defaultvalue' => get_config('wwwroot') . 'privacy.php',
+                ),
+                'termsurl' => array(
+                    'type'         => 'text',
+                    'title'        => get_string('termsurl', 'blocktype.cloud/googledrive'),
+                    'defaultvalue' => get_config('wwwroot') . 'terms.php',
                 ),
             )
         );
         return array(
+            'class' => 'panel panel-body',
             'elements' => $elements,
         );
 
@@ -297,43 +325,43 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
         $service->authurl    = 'https://accounts.google.com/o/oauth2/';
         $service->key        = get_config_plugin('blocktype', 'googledrive', 'consumerkey');
         $service->secret     = get_config_plugin('blocktype', 'googledrive', 'consumersecret');
-		// If SSL is set then force SSL URL for callback
-		if ($service->ssl) {
+        // If SSL is set then force SSL URL for callback
+        if ($service->ssl) {
             $wwwroot = str_replace('http://', 'https://', get_config('wwwroot'));
-		}
+        }
         $service->callback   = $wwwroot . 'artefact/cloud/blocktype/googledrive/callback.php';
         $service->usrprefs   = ArtefactTypeCloud::get_user_preferences('google', $owner);
         return $service;
     }
 
     public function service_list() {
+        global $SESSION;
         $consumer = self::get_service_consumer();
+        $service = new StdClass();
+        $service->name = 'googledrive';
+        $service->url = 'http://drive.google.com';
+        $service->auth = false;
+        $service->manage = false;
+        $service->pending = false;
+
         if (!empty($consumer->key) && !empty($consumer->secret)) {
             if (isset($consumer->usrprefs['access_token']) && !empty($consumer->usrprefs['access_token'])) {
-                return array(
-                    'service_name'   => 'googledrive',
-                    'service_url'    => 'http://drive.google.com',
-                    'service_auth'   => true,
-                    'service_manage' => true,
-                    //'revoke_access'  => true,
-                );
-            } else {
-                return array(
-                    'service_name'   => 'googledrive',
-                    'service_url'    => 'http://drive.google.com',
-                    'service_auth'   => false,
-                    'service_manage' => false,
-                    //'revoke_access'  => false,
-                );
+                $service->auth = true;
+                $service->manage = true;
+                $service->account = self::account_info();
             }
-        } else {
-            throw new ConfigException('Can\'t find Google Drive API consumer ID and/or consumer secret.');
         }
+        else {
+            $service->pending = true;
+            $SESSION->add_error_msg('Can\'t find Google Drive consumer key and/or consumer secret.');
+        }
+        return $service;
     }
     
     // SEE: https://developers.google.com/accounts/docs/OAuth2WebServer#formingtheurl
-	// SEE: https://developers.google.com/picasa-web/docs/2.0/developers_guide_protocol#Audience
+    // SEE: https://developers.google.com/picasa-web/docs/2.0/developers_guide_protocol#Audience
     public function request_token() {
+        global $SESSION;
         $consumer = self::get_service_consumer();
         if (!empty($consumer->key) && !empty($consumer->secret)) {
             $url = $consumer->authurl.'auth';
@@ -351,8 +379,9 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
             $query = oauth_http_build_query($params);
             $request_url = $url . ($query ? ('?' . $query) : '');
             redirect($request_url);
-        } else {
-            throw new ConfigException('Can\'t find Google Drive API consumer key and/or consumer secret.');
+        }
+        else {
+            $SESSION->add_error_msg('Can\'t find Google Drive consumer key and/or consumer secret.');
         }
     }
 
@@ -381,22 +410,23 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
                 CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
             );
             $result = mahara_http_request($config);
-            if ($result->info['http_code'] == 200 && !empty($result->data)) {
+            if (isset($result->data) && !empty($result->data) &&
+                isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
                 $data = json_decode($result->data, true);
                 return $data;
             }
             else {
-                $SESSION->add_error_msg(get_string('accesstokennotreturned', 'blocktype.cloud/googledrive'));
+                $SESSION->add_error_msg(get_string('accesstokennotreturned', 'artefact.cloud'));
             }
         }
         else {
-            throw new ConfigException('Can\'t find Google Drive API consumer ID and/or consumer secret.');
+            $SESSION->add_error_msg('Can\'t find Google Drive consumer key and/or consumer secret.');
         }
     }
 
     // SEE: https://developers.google.com/accounts/docs/OAuth2WebServer#refresh
     public function check_access_token($owner=null) {
-        global $USER;
+        global $USER, $SESSION;
         $consumer = self::get_service_consumer($owner);
         if (!empty($consumer->key) && !empty($consumer->secret)) {
             // Find out when access token actually expires and take away 10 seconds
@@ -425,7 +455,8 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
                     CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
                 );
                 $result = mahara_http_request($config);
-                if ($result->info['http_code'] == 200 && !empty($result->data)) {
+                if (isset($result->data) && !empty($result->data) &&
+                    isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
                     $prefs = json_decode($result->data, true);
                     // Request for new access_token doesn't return refresh_token at all!
                     // Add refresh_token so we'll be able to get new access_token in the future...
@@ -438,8 +469,9 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
             else {
                 return $consumer->usrprefs['access_token'];
             }
-        } else {
-            throw new ConfigException('Can\'t find Google Drive API consumer ID and/or consumer secret.');
+        }
+        else {
+            $SESSION->add_error_msg('Can\'t find Google Drive consumer key and/or consumer secret.');
         }
     }
 
@@ -450,6 +482,7 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
     
     // SEE: https://developers.google.com/accounts/docs/OAuth2WebServer#tokenrevoke
     public function revoke_access() {
+        global $SESSION;
         $consumer = self::get_service_consumer();
         if (!empty($consumer->key) && !empty($consumer->secret)) {
             // Construct revoke url, for revokin access...
@@ -463,16 +496,30 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
             curl_setopt($ch, CURLOPT_POST, false);
             $result = curl_exec($ch);
             curl_close($ch);
-        } else {
-            throw new ConfigException('Can\'t find Google Drive API consumer key and/or consumer secret.');
+        }
+        else {
+            $SESSION->add_error_msg('Can\'t find Google Drive consumer key and/or consumer secret.');
         }
     }
     
     // SEE: https://developers.google.com/accounts/docs/OAuth2Login#userinfocall
     // SEE: https://developers.google.com/drive/v2/reference/about/get (quota and other user info)
     public function account_info() {
+        global $SESSION;
         $consumer = self::get_service_consumer();
         $token = self::check_access_token();
+
+        $info = new StdClass();
+        $info->service_name = 'box';
+        $info->service_auth = false;
+        $info->user_id      = null;
+        $info->user_name    = null;
+        $info->user_email   = null;
+        $info->user_profile = null;
+        $info->space_used   = null;
+        $info->space_amount = null;
+        $info->space_ratio  = null;
+
         if (!empty($consumer->key) && !empty($consumer->secret)) {
             $url = $consumer->baseurl.'oauth2/v1/userinfo';
             $port = $consumer->ssl ? '443' : '80';
@@ -487,7 +534,8 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
                 CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
             );
             $result = mahara_http_request($config);
-            if ($result->info['http_code'] == 200 && !empty($result->data)) {
+            if (isset($result->data) && !empty($result->data) &&
+                isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
                 $data = json_decode(substr($result->data, $result->info['header_size']), true);
                 // Get user's quota information...
                 $url2 = $consumer->driveurl.$consumer->version.'/about';
@@ -503,34 +551,28 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
                 );
                 $result2 = mahara_http_request($config2);
                 $quota = json_decode(substr($result2->data, $result2->info['header_size']), true);
-                return array(
-                    'service_name' => 'googledrive',
-                    'service_auth' => true,
-                    'user_id'      => $data['id'],
-                    'user_name'    => $data['name'],
-                    'user_email'   => $data['email'],
-                    'user_profile' => $data['link'],
-                    'space_used'   => bytes_to_size1024(floatval($quota['quotaBytesUsed'])),
-                    'space_amount' => bytes_to_size1024(floatval($quota['quotaBytesTotal'])),
-                    'space_ratio'  => number_format((floatval($quota['quotaBytesUsed'])/floatval($quota['quotaBytesTotal']))*100, 2),
-                );
-            } else {
-                return array(
-                    'service_name' => 'googledrive',
-                    'service_auth' => false,
-                    'user_id'      => null,
-                    'user_name'    => null,
-                    'user_email'   => null,
-                    'user_profile' => null,
-                    'space_used'   => null,
-                    'space_amount' => null,
-                    'space_ratio'  => null,
-                );
+
+                $info->service_name = 'googledrive';
+                $info->service_auth = true;
+                $info->user_id      = $data['id'];
+                $info->user_name    = $data['name'];
+                $info->user_email   = $data['email'];
+                $info->user_profile = $data['link'];
+                $info->space_used   = bytes_to_size1024(floatval($quota['quotaBytesUsed']));
+                $info->space_amount = bytes_to_size1024(floatval($quota['quotaBytesTotal']));
+                $info->space_ratio  = number_format((floatval($quota['quotaBytesUsed'])/floatval($quota['quotaBytesTotal']))*100, 2);
+                return $info;
+            }
+            else {
+                $httpstatus = get_http_status($result->info['http_code']);
+                $SESSION->add_error_msg($httpstatus);
+                log_warn($httpstatus);
             }
         }
         else {
-            throw new ConfigException('Can\'t find Google Drive API consumer ID and/or consumer secret.');
+            $SESSION->add_error_msg('Can\'t find Google Drive consumer key and/or consumer secret.');
         }
+        return $info;
     }
     
     
@@ -544,7 +586,7 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
      *
      */
     public function get_filelist($folder_id='root', $selected=array(), $owner=null) {
-        global $THEME;
+        global $SESSION;
 
         // Get folder contents...
         $consumer = self::get_service_consumer($owner);
@@ -556,8 +598,9 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
                 'access_token' => $token,
                 //'maxResults' => 1000,
                 'trashed' => false,
-				'q' => '\''.$folder_id.'\' in parents',
-				'fields' => 'items/kind,items/id,items/title,items/mimeType,items/quotaBytesUsed,items/createdDate'
+                'orderBy' => 'title',
+                'q' => '\''.$folder_id.'\' in parents',
+                'fields' => 'items/kind,items/id,items/title,items/mimeType,items/quotaBytesUsed,items/createdDate'
             );
             $config = array(
                 CURLOPT_URL => $url.'?'.oauth_http_build_query($params),
@@ -569,7 +612,8 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
                 CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
             );
             $result = mahara_http_request($config);
-            if ($result->info['http_code'] == 200 && !empty($result->data)) {
+            if (isset($result->data) && !empty($result->data) &&
+                isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
                 $data = json_decode($result->data, true);
                 $output = array(
                     'folders' => array(),
@@ -578,55 +622,72 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
                 if (isset($data['items']) && !empty($data['items'])) {
                     foreach($data['items'] as $artefact) {
                         if (in_array($artefact['id'], $selected)) {
-                            $id = $artefact['id'];
-							// SEE: https://developers.google.com/drive/web/mime-types
-							switch ($artefact['mimeType']) {
-							    case 'application/vnd.google-apps.folder':
-								    $type = 'folder';
-									break;
-								//case 'application/vnd.google-apps.audio':
-								case 'application/vnd.google-apps.document':
-								//case 'application/vnd.google-apps.drawing':
-								//case 'application/vnd.google-apps.file':
-								//case 'application/vnd.google-apps.form':
-								//case 'application/vnd.google-apps.fusiontable':
-								case 'application/vnd.google-apps.photo':
-								case 'application/vnd.google-apps.presentation':
-								//case 'application/vnd.google-apps.script':
-								//case 'application/vnd.google-apps.sites':
-								case 'application/vnd.google-apps.spreadsheet':
-								//case 'application/vnd.google-apps.unknown':
-								//case 'application/vnd.google-apps.video':
-								    $type = 'googleapps';
-									break;
-								default:
-								    $type = 'file';
-							}
-                            $icontype = ($artefact['mimeType'] == 'application/vnd.google-apps.folder' ? 'folder' : 'file');
-                            $icon = $THEME->get_url('images/' . $icontype . '.png');
+                            // SEE: https://developers.google.com/drive/web/mime-types
+                            $googleapps = array(
+                                'application/vnd.google-apps.audio',
+                                'application/vnd.google-apps.document',
+                                'application/vnd.google-apps.drawing',
+                                'application/vnd.google-apps.file',
+                                'application/vnd.google-apps.form',
+                                'application/vnd.google-apps.fusiontable',
+                                'application/vnd.google-apps.photo',
+                                'application/vnd.google-apps.presentation',
+                                'application/vnd.google-apps.script',
+                                'application/vnd.google-apps.sites',
+                                'application/vnd.google-apps.spreadsheet',
+                                'application/vnd.google-apps.unknown',
+                                'application/vnd.google-apps.video',
+                            );
                             $artefactname = $artefact['title'];
-                            // Add extension from Google Docs file MIME Type...
-							if ($type == 'googleapps') {
-							    $artefactname .= '.' . array_pop(explode('.', $artefact['mimeType']));
-							}
-                            $title        = $artefactname;
+                            if ($artefact['mimeType'] == 'application/vnd.google-apps.folder') {
+                                $type = 'folder';
+                                $icon = '<span class="icon-folder-open icon icon-lg"></span>';
+                            }
+                            elseif (in_array($artefact['mimeType'], $googleapps)) {
+                                $type = 'file';
+                                $icon = '<span class="icon-file icon icon-lg"></span>';
+                                // Add extension from Google Docs file MIME Type...
+                                $artefactname .= '.' . array_pop(explode('.', $artefact['mimeType']));
+                            }
+                            else {
+                                $type = 'file';
+                                $icon = '<span class="icon-file icon icon-lg"></span>';
+                            }
+
+                            $id           = $artefact['id'];
                             $description  = (!empty($artefact['description']) ? $artefact['description'] : '');
                             $size         = ($artefact['quotaBytesUsed'] > 0 ? bytes_to_size1024($artefact['quotaBytesUsed']) : '-');
                             $created      = ($artefact['createdDate'] ? format_date(strtotime($artefact['createdDate']), 'strftimedaydate') : null);
                             if ($type == 'folder') {
-                                $output['folders'][] = array('iconsrc' => $icon, 'id' => $id, 'type' => $type, 'title' => $title, 'description' => $description, 'size' => $size, 'ctime' => $created);
+                                $output['folders'][] = array(
+                                    'id' => $id,
+                                    'title' => $artefactname,
+                                    'description' => $description,
+                                    'artefacttype' => $type,
+                                    'size' => $size,
+                                    'ctime' => $created,
+                                );
                             } else {
-                                $output['files'][] = array('iconsrc' => $icon, 'id' => $id, 'type' => $type, 'title' => $title, 'description' => $description, 'size' => $size, 'ctime' => $created);
+                                $output['files'][] = array(
+                                    'id' => $id,
+                                    'title' => $artefactname,
+                                    'description' => $description,
+                                    'artefacttype' => $type,
+                                    'size' => $size,
+                                    'ctime' => $created,
+                                );
                             }
                         }
                     }
                 }                    
                 return $output;
-            } else {
+            }
+            else {
                 return array();
             }
-         } else {
-            throw new ConfigException('Can\'t find Google Drive API consumer ID and/or consumer secret.');
+        }
+        else {
+            $SESSION->add_error_msg('Can\'t find Google Drive consumer key and/or consumer secret.');
         }
     }
 
@@ -644,18 +705,18 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
      *              Please see: http://datatables.net/usage/server-side (Reply from the server)!
      *
      * SEE: https://developers.google.com/drive/v2/reference/files/list (also for params!)
-	 * SEE: https://developers.google.com/drive/web/search-parameters
-	 * SEE: https://developers.google.com/drive/web/performance#partial
+     * SEE: https://developers.google.com/drive/web/search-parameters
+     * SEE: https://developers.google.com/drive/web/performance#partial
      *
      */
     public function get_folder_content($folder_id='root', $options, $block=0) {
-        global $THEME;
+        global $SESSION;
         
-		// $folder_id is globally set to '0', set it to '/'
-		// as it is the Dropbox default root folder ...
-		if ($folder_id == '0') {
-			$folder_id = 'root';
-		}
+        // $folder_id is globally set to '0', set it to '/'
+        // as it is the Google Drive default root folder ...
+        if ($folder_id == '0') {
+            $folder_id = 'root';
+        }
 
         // Get selected artefacts (folders and/or files)
         if ($block > 0) {
@@ -678,13 +739,13 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
         $selectMultiple = (boolean) $options[5];
 
         // Get folder parent...
-		$parent_id = 'root'; // either 'root' folder itself or parent is 'root' folder
-		$folder = self::get_folder_info($folder_id);
-		if (!empty($folder['parent_id'])) {
-			$parent_id = $folder['parent_id'];
-		}
+        $parent_id = 'root'; // either 'root' folder itself or parent is 'root' folder
+        $folder = self::get_folder_info($folder_id);
+        if (!empty($folder['parent_id'])) {
+            $parent_id = $folder['parent_id'];
+        }
 
-		// Get folder contents...
+        // Get folder contents...
         $consumer = self::get_service_consumer();
         $token = self::check_access_token();
         if (!empty($consumer->key) && !empty($consumer->secret)) {
@@ -693,8 +754,9 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
             $params = array(
                 //'maxResults' => 1000,
                 'trashed' => false,
-				'q' => '\''.$folder_id.'\' in parents',
-				'fields' => 'items/kind,items/id,items/title,items/mimeType,items/parents'
+                'orderBy' => 'title',
+                'q' => '\''.$folder_id.'\' in parents',
+                'fields' => 'items/kind,items/id,items/title,items/mimeType,items/parents'
             );
             $config = array(
                 CURLOPT_URL => $url.'?'.oauth_http_build_query($params),
@@ -707,7 +769,8 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
                 CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
             );
             $result = mahara_http_request($config);
-            if ($result->info['http_code'] == 200 && !empty($result->data)) {
+            if (isset($result->data) && !empty($result->data) &&
+                isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
                 $data = json_decode(substr($result->data, $result->info['header_size']), true);
                 $output = array();
                 $count = 0;
@@ -715,112 +778,157 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
                 if ($parent_id != 'root') {
                     $type        = 'parentfolder';
                     $foldername  = get_string('parentfolder', 'artefact.file');
-                    $title       = '<a class="changefolder" href="javascript:void(0)" id="' . $parent_id . '" title="' . get_string('gotofolder', 'artefact.file', $foldername) . '"><img src="' . $THEME->get_url('images/parentfolder.png') . '"></a>';
-                    $output['aaData'][] = array('', $title, '', $type);
+                    $icon        = '<span class="icon-level-up icon icon-lg"></span>';
+                    $title       = '<a class="changefolder" href="javascript:void(0)" id="' . $parent_id . '" title="' . get_string('gotofolder', 'artefact.file', $foldername) . '">' . $foldername . '</a>';
+                    $output['data'][] = array($icon, $title, '', $type);
                 }
+
                 if (!empty($data['items'])) {
+                    // SEE: https://developers.google.com/drive/web/mime-types
+                    $googleapps = array(
+                        'application/vnd.google-apps.audio',
+                        'application/vnd.google-apps.document',
+                        'application/vnd.google-apps.drawing',
+                        'application/vnd.google-apps.file',
+                        'application/vnd.google-apps.form',
+                        'application/vnd.google-apps.fusiontable',
+                        'application/vnd.google-apps.photo',
+                        'application/vnd.google-apps.presentation',
+                        'application/vnd.google-apps.script',
+                        'application/vnd.google-apps.sites',
+                        'application/vnd.google-apps.spreadsheet',
+                        'application/vnd.google-apps.unknown',
+                        'application/vnd.google-apps.video',
+                    );
                     foreach($data['items'] as $artefact) {
                         if ($folder_id == 'root') {
                             if (!empty($artefact['parents']) && $artefact['parents'][0]['isRoot'] == true) {
-                                $id           = $artefact['id'];
-                                $type         = ($artefact['mimeType'] == 'application/vnd.google-apps.folder' ? 'folder' : 'file');
-                                $icon         = '<img src="' . $THEME->get_url('images/' . $type . '.png') . '">';
-                                // Get artefactname by removing parent path from beginning...
                                 $artefactname = $artefact['title'];
-                                // Add extension from Google Docs file MIME Type...
-                                if (($type == 'file') && substr($artefact['mimeType'], 0, 27) == 'application/vnd.google-apps') {
+                                if ($artefact['mimeType'] == 'application/vnd.google-apps.folder') {
+                                    $type = 'folder';
+                                    $icon = '<span class="icon-folder-open icon icon-lg"></span>';
+                                }
+                                elseif (in_array($artefact['mimeType'], $googleapps)) {
+                                    $type = 'file';
+                                    $icon = '<span class="icon-file icon icon-lg"></span>';
+                                    // Add extension from Google Docs file MIME Type...
                                     $artefactname .= '.' . array_pop(explode('.', $artefact['mimeType']));
                                 }
+                                else {
+                                    $type = 'file';
+                                    $icon = '<span class="icon-file icon icon-lg"></span>';
+                                }
+
+                                $id          = $artefact['id'];
+                                $description = (!empty($artefact['description']) ? $artefact['description'] : '');
                                 if ($artefact['mimeType'] == 'application/vnd.google-apps.folder') {
                                     $title    = '<a class="changefolder" href="javascript:void(0)" id="' . $id . '" title="' . get_string('gotofolder', 'artefact.file', $artefactname) . '">' . $artefactname . '</a>';
-                                } else {
+                                }
+                                else {
                                     $title    = '<a class="filedetails" href="' . get_config('wwwroot') . 'artefact/cloud/blocktype/googledrive/details.php?id=' . $id . '" title="' . get_string('filedetails', 'artefact.cloud', $artefactname) . '">' . $artefactname . '</a>';
                                 }
+
                                 $controls = '';
                                 $selected = (in_array($id, $artefacts) ? ' checked' : '');
                                 if ($artefact['mimeType'] == 'application/vnd.google-apps.folder') {
                                     if ($selectFolders) {
                                         $controls = '<input type="' . ($selectMultiple ? 'checkbox' : 'radio') . '" name="artefacts[]" id="artefacts[]" value="' . $id . '"' . $selected . '>';
                                     }
-                                } else {
+                                }
+                                else {
                                     if ($selectFiles && !$manageButtons) {
                                         $controls = '<input type="' . ($selectMultiple ? 'checkbox' : 'radio') . '" name="artefacts[]" id="artefacts[]" value="' . $id . '"' . $selected . '>';
-                                    } elseif ($manageButtons) {
-                                        $controls  = '<div class="btns3">';
-                                        $controls .= '<a title="' . get_string('preview', 'artefact.cloud') . '" href="preview.php?id=' . $id . '" target="_blank"><img src="' . get_config('wwwroot') . 'artefact/cloud/theme/raw/static/images/btn_preview.png" alt="' . get_string('preview', 'artefact.cloud') . '"></a>';
+                                    }
+                                    elseif ($manageButtons) {
+                                        $controls  = '<div class="btn-group">';
                                         if ($artefact['mimeType'] != 'application/vnd.google-apps.folder') {
-                                            if (isset($artefact['downloadUrl'])) {
-                                                $controls .= '<a title="' . get_string('save', 'artefact.cloud') . '" href="download.php?id=' . $id . '&save=1"><img src="' . get_config('wwwroot') . 'artefact/cloud/theme/raw/static/images/btn_save.png" alt="' . get_string('save', 'artefact.cloud') . '"></a>';
-                                                $controls .= '<a title="' . get_string('download', 'artefact.cloud') . '" href="download.php?id=' . $id . '"><img src="' . get_config('wwwroot') . 'artefact/cloud/theme/raw/static/images/btn_download.png" alt="' . get_string('download', 'artefact.cloud') . '"></a>';
-                                            } else {
-                                                $controls .= '<a title="' . get_string('save', 'artefact.cloud') . '" href="export.php?id=' . $id . '&save=1"><img src="' . get_config('wwwroot') . 'artefact/cloud/theme/raw/static/images/btn_save.png" alt="' . get_string('save', 'artefact.cloud') . '"></a>';
-                                                $controls .= '<a title="' . get_string('export', 'artefact.cloud') . '" href="export.php?id=' . $id . '"><img src="' . $THEME->get_url('images/btn_export.png') . '" alt="' . get_string('export', 'artefact.cloud') . '"></a>';
+                                            if (in_array($artefact['mimeType'], $googleapps)) {
+                                                $controls .= '<a class="btn btn-default btn-xs" title="' . get_string('save', 'artefact.cloud') . '" href="export.php?id=' . $id . '&save=1"><span class="icon icon-floppy-o icon-lg"></span></a>';
+                                                $controls .= '<a class="btn btn-default btn-xs" title="' . get_string('export', 'artefact.cloud') . '" href="export.php?id=' . $id . '"><span class="icon icon-download icon-lg"></span></a>';
+                                            }
+                                            else {
+                                                $controls .= '<a class="btn btn-default btn-xs" title="' . get_string('save', 'artefact.cloud') . '" href="download.php?id=' . $id . '&save=1"><span class="icon icon-floppy-o icon-lg"></span></a>';
+                                                $controls .= '<a class="btn btn-default btn-xs" title="' . get_string('download', 'artefact.cloud') . '" href="download.php?id=' . $id . '"><span class="icon icon-download icon-lg"></span></a>';
                                             }
                                         }
                                         $controls .= '</div>';                                    }
                                 }
-                                $output['aaData'][] = array($icon, $title, $controls, $type);
+                                $output['data'][] = array($icon, $title, $controls, $type);
                                 $count++;
                             }
-                        } else {
+                        }
+                        else {
                             if (!empty($artefact['parents']) && $artefact['parents'][0]['id'] == $folder_id) {
-                                $id           = $artefact['id'];
-                                $type         = ($artefact['mimeType'] == 'application/vnd.google-apps.folder' ? 'folder' : 'file');
-                                $icon         = '<img src="' . $THEME->get_url('images/' . $type . '.png') . '">';
-                                // Get artefactname by removing parent path from beginning...
                                 $artefactname = $artefact['title'];
-                                // Add extension from Google Docs file MIME Type...
-                                if (($type == 'file') && substr($artefact['mimeType'], 0, 27) == 'application/vnd.google-apps') {
-                                    $artefactname .= '.' . strrev(strtok(strrev($artefact['mimeType']), '.'));
+                                if ($artefact['mimeType'] == 'application/vnd.google-apps.folder') {
+                                    $type = 'folder';
+                                    $icon = '<span class="icon-folder-open icon icon-lg"></span>';
                                 }
+                                elseif (in_array($artefact['mimeType'], $googleapps)) {
+                                    $type = 'file';
+                                    $icon = '<span class="icon-file icon icon-lg"></span>';
+                                    // Add extension from Google Docs file MIME Type...
+                                    $artefactname .= '.' . array_pop(explode('.', $artefact['mimeType']));
+                                }
+                                else {
+                                    $type = 'file';
+                                    $icon = '<span class="icon-file icon icon-lg"></span>';
+                                }
+
+                                $id          = $artefact['id'];
+                                $description = (!empty($artefact['description']) ? $artefact['description'] : '');
                                 if ($artefact['mimeType'] == 'application/vnd.google-apps.folder') {
                                     $title    = '<a class="changefolder" href="javascript:void(0)" id="' . $id . '" title="' . get_string('gotofolder', 'artefact.file', $artefactname) . '">' . $artefactname . '</a>';
-                                } else {
+                                }
+                                else {
                                     $title    = '<a class="filedetails" href="' . get_config('wwwroot') . 'artefact/cloud/blocktype/googledrive/details.php?id=' . $id . '" title="' . get_string('filedetails', 'artefact.cloud', $artefactname) . '">' . $artefactname . '</a>';
                                 }
+
                                 $controls = '';
                                 $selected = (in_array($id, $artefacts) ? ' checked' : '');
                                 if ($artefact['mimeType'] == 'application/vnd.google-apps.folder') {
                                     if ($selectFolders) {
                                         $controls = '<input type="' . ($selectMultiple ? 'checkbox' : 'radio') . '" name="artefacts[]" id="artefacts[]" value="' . $id . '"' . $selected . '>';
                                     }
-                                } else {
+                                }
+                                else {
                                     if ($selectFiles && !$manageButtons) {
                                         $controls = '<input type="' . ($selectMultiple ? 'checkbox' : 'radio') . '" name="artefacts[]" id="artefacts[]" value="' . $id . '"' . $selected . '>';
-                                    } elseif ($manageButtons) {
-                                        $controls  = '<div class="btns3">';
-                                        $controls .= '<a title="' . get_string('preview', 'artefact.cloud') . '" href="preview.php?id=' . $id . '" target="_blank"><img src="' . get_config('wwwroot') . 'artefact/cloud/theme/raw/static/images/btn_preview.png" alt="' . get_string('preview', 'artefact.cloud') . '"></a>';
-                                        if ($artefact['mimeType'] != 'application/vnd.google-apps.folder') {
-                                            if (isset($artefact['downloadUrl'])) {
-                                                $controls .= '<a title="' . get_string('save', 'artefact.cloud') . '" href="download.php?id=' . $id . '&save=1"><img src="' . get_config('wwwroot') . 'artefact/cloud/theme/raw/static/images/btn_save.png" alt="' . get_string('save', 'artefact.cloud') . '"></a>';
-                                                $controls .= '<a title="' . get_string('download', 'artefact.cloud') . '" href="download.php?id=' . $id . '"><img src="' . get_config('wwwroot') . 'artefact/cloud/theme/raw/static/images/btn_download.png" alt="' . get_string('download', 'artefact.cloud') . '"></a>';
-                                            } else {
-                                                $controls .= '<a title="' . get_string('save', 'artefact.cloud') . '" href="export.php?id=' . $id . '&save=1"><img src="' . get_config('wwwroot') . 'artefact/cloud/theme/raw/static/images/btn_save.png" alt="' . get_string('save', 'artefact.cloud') . '"></a>';
-                                                $controls .= '<a title="' . get_string('export', 'artefact.cloud') . '" href="export.php?id=' . $id . '"><img src="' . $THEME->get_url('images/btn_export.png') . '" alt="' . get_string('export', 'artefact.cloud') . '"></a>';
-                                            }
+                                    }
+                                    elseif ($manageButtons) {
+                                        if (in_array($artefact['mimeType'], $googleapps)) {
+                                            $controls .= '<a class="btn btn-default btn-xs" title="' . get_string('save', 'artefact.cloud') . '" href="export.php?id=' . $id . '&save=1"><span class="icon icon-floppy-o icon-lg"></span></a>';
+                                            $controls .= '<a class="btn btn-default btn-xs" title="' . get_string('export', 'artefact.cloud') . '" href="export.php?id=' . $id . '"><span class="icon icon-download icon-lg"></span></a>';
+                                        }
+                                        else {
+                                            $controls .= '<a class="btn btn-default btn-xs" title="' . get_string('save', 'artefact.cloud') . '" href="download.php?id=' . $id . '&save=1"><span class="icon icon-floppy-o icon-lg"></span></a>';
+                                            $controls .= '<a class="btn btn-default btn-xs" title="' . get_string('download', 'artefact.cloud') . '" href="download.php?id=' . $id . '"><span class="icon icon-download icon-lg"></span></a>';
                                         }
                                         $controls .= '</div>';
                                     }
                                 }
-                                $output['aaData'][] = array($icon, $title, $controls, $type);
+                                $output['data'][] = array($icon, $title, $controls, $type);
                                 $count++;
                             }
                         }
                     }
                 }
-                $output['iTotalRecords'] = $count;
-                $output['iTotalDisplayRecords'] = $count;
+                $output['recordsTotal'] = $count;
+                $output['recordsFiltered'] = $count;
                 return json_encode($output);
-            } else {
+            }
+            else {
                 return array();
             }
-         } else {
-            throw new ConfigException('Can\'t find Google Drive API consumer ID and/or consumer secret.');
+        }
+        else {
+            $SESSION->add_error_msg('Can\'t find Google Drive consumer key and/or consumer secret.');
         }
     }
 
     // SEE: https://developers.google.com/drive/v2/reference/files/get
     public function get_folder_info($folder_id='root', $owner=null) {
+        global $SESSION;
         $consumer = self::get_service_consumer($owner);
         $token = self::check_access_token($owner);
         if (!empty($consumer->key) && !empty($consumer->secret)) {
@@ -837,29 +945,32 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
                 CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
             );
             $result = mahara_http_request($config);
-            if ($result->info['http_code'] == 200 && !empty($result->data)) {
+            if (isset($result->data) && !empty($result->data) &&
+                isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
                 $data = json_decode($result->data, true);
                 $info = array(
                     'id'          => $data['id'],
-					'parent_id'   => (!empty($data['parents'][0]['id']) ? $data['parents'][0]['id'] : null),
+                    'parent_id'   => (!empty($data['parents'][0]['id']) ? $data['parents'][0]['id'] : null),
                     'name'        => $data['title'],
                     'type'        => $data['mimeType'],
                     'shared'      => $data['writersCanShare'],
-                    'preview'     => null, //$data['link'],
                     'created'     => ($data['createdDate'] ? format_date(strtotime($data['createdDate']), 'strfdaymonthyearshort') : null),
                     'updated'     => ($data['modifiedDate'] ? format_date(strtotime($data['modifiedDate']), 'strfdaymonthyearshort') : null),
                 );
                 return $info;
-            } else {
+            }
+            else {
                 return null;
             }
-         } else {
-            throw new ConfigException('Can\'t find Google Drive API consumer ID and/or consumer secret.');
+        }
+        else {
+            $SESSION->add_error_msg('Can\'t find Google Drive consumer key and/or consumer secret.');
         }
     }
 
     // SEE: https://developers.google.com/drive/v2/reference/files/get
     public function get_file_info($file_id='', $owner=null) {
+        global $SESSION;
         $consumer = self::get_service_consumer($owner);
         $token = self::check_access_token($owner);
         if (!empty($consumer->key) && !empty($consumer->secret)) {
@@ -876,17 +987,17 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
                 CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
             );
             $result = mahara_http_request($config);
-            if ($result->info['http_code'] == 200 && !empty($result->data)) {
+            if (isset($result->data) && !empty($result->data) &&
+                isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
                 $data = json_decode($result->data, true);
                 $info = array(
                     'id'          => $data['id'],
-					'parent_id'   => (!empty($data['parents'][0]['id']) ? $data['parents'][0]['id'] : null),
+                    'parent_id'   => (!empty($data['parents'][0]['id']) ? $data['parents'][0]['id'] : null),
                     'name'        => $data['title'],
                     'type'        => $data['mimeType'],
                     'bytes'       => ($data['quotaBytesUsed'] > 0 ? $data['quotaBytesUsed'] : '-'),
                     'size'        => ($data['quotaBytesUsed'] > 0 ? bytes_to_size1024($data['quotaBytesUsed']) : '-'),
                     'shared'      => $data['writersCanShare'], 
-                    'preview'     => $data['alternateLink'],
                     'created'     => (isset($data['createdDate']) ? format_date(strtotime($data['createdDate']), 'strfdaymonthyearshort') : null),
                     'updated'     => (isset($data['modifiedDate']) ? format_date(strtotime($data['modifiedDate']), 'strfdaymonthyearshort') : null),
                     'parent'      => $data['parents'][0]['id'],
@@ -894,16 +1005,19 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
                     'export'      => (isset($data['exportLinks']) ? $data['exportLinks'] : array()),
                 );
                 return $info;
-            } else {
+            }
+            else {
                 return null;
             }
-         } else {
-            throw new ConfigException('Can\'t find Google Drive API consumer ID and/or consumer secret.');
+        }
+        else {
+            $SESSION->add_error_msg('Can\'t find Google Drive consumer key and/or consumer secret.');
         }
     }
 
     // SEE: https://developers.google.com/drive/v2/reference/files
     public function download_file($file_id='', $owner=null) {
+        global $SESSION;
         $consumer = self::get_service_consumer($owner);
         $token = self::check_access_token($owner);
         if (!empty($consumer->key) && !empty($consumer->secret)) {
@@ -920,9 +1034,9 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
                 CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
             );
             $result = mahara_http_request($config);
-            if ($result->info['http_code'] == 200 && !empty($result->data)) {
+            if (isset($result->data) && !empty($result->data) &&
+                isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
                 $data = json_decode($result->data, true);
-				log_debug($data);
                 $sign = (strpos($data['downloadUrl'], '?') == false ? '?' : '&');
                 $download_url = $data['downloadUrl'] . $sign . 'access_token=' . str_replace('%7E', '~', rawurlencode($token));
                 $result = '';
@@ -940,8 +1054,9 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
                 curl_close($ch);
                 return $result;
             }
-        } else {
-            throw new ConfigException('Can\'t find Google Drive API consumer ID and/or consumer secret.');
+        }
+        else {
+            $SESSION->add_error_msg('Can\'t find Google Drive consumer key and/or consumer secret.');
         }
     }
 
@@ -951,6 +1066,7 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
      * SEE: https://developers.google.com/drive/v2/reference/files
      */
     public function export_file($export_url, $owner=null) {
+        global $SESSION;
         $consumer = self::get_service_consumer($owner);
         $token = self::check_access_token($owner);
         if (!empty($consumer->key) && !empty($consumer->secret)) {
@@ -970,22 +1086,11 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
             $result = curl_exec($ch);
             curl_close($ch);
             return $result;
-        } else {
-            throw new ConfigException('Can\'t find Google Drive API consumer ID and/or consumer secret.');
+        }
+        else {
+            $SESSION->add_error_msg('Can\'t find Google Drive consumer key and/or consumer secret.');
         }
     }
-
-    /*
-    public static function get_embeddable_mimetypes() {
-        return array(
-            'application/vnd.google-apps.document',
-            'application/vnd.google-apps.drawing',
-            'application/vnd.google-apps.form',
-            'application/vnd.google-apps.presentation',
-            'application/vnd.google-apps.spreadsheet',
-        );
-    }
-    */
 
     /*
      * SEE: https://developers.google.com/drive/v2/reference/files (bottom of page - embedLink!)
@@ -995,6 +1100,7 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
      *      Embedding of other files, uploaded to Google Drive is in general not supported.
      */
     public function embed_file($file_id='', $options=array('width' => 480, 'height' => 360), $owner=null) {
+        global $SESSION;
         $consumer = self::get_service_consumer($owner);
         $token = self::check_access_token($owner);
         if (!empty($consumer->key) && !empty($consumer->secret)) {
@@ -1011,7 +1117,8 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
                 CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
             );
             $result = mahara_http_request($config);
-            if ($result->info['http_code'] == 200 && !empty($result->data)) {
+            if (isset($result->data) && !empty($result->data) &&
+                isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
                 $data = json_decode($result->data, true);
                 if (isset($data['embedLink']) && !empty($data['embedLink'])) {
                     return '<iframe src="' . $data['embedLink'] . '" width="' . $options['width'] . '" height="' . $options['height'] . '" frameborder="0" scrolling="no"></iframe>';
@@ -1022,50 +1129,14 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
                     $embedLink = str_replace("/edit", "/preview", $data['alternateLink']);
                     return '<iframe src="' . $embedLink . '" width="' . $options['width'] . '" height="' . $options['height'] . '" frameborder="0" scrolling="no"></iframe>';
                 }
-            } else {
+            }
+            else {
                 return null;
             }
-         } else {
-            throw new ConfigException('Can\'t find Google Drive API consumer ID and/or consumer secret.');
         }
-    }
-
-    // SEE: https://developers.google.com/drive/v2/reference/files
-    public function public_url($file_id='', $owner=null) {
-        $consumer = self::get_service_consumer($owner);
-        $token = self::check_access_token($owner);
-        if (!empty($consumer->key) && !empty($consumer->secret)) {
-            $url = $consumer->driveurl.$consumer->version.'/files/'.$file_id;
-            $port = $consumer->ssl ? '443' : '80';
-            $params = array('access_token' => $token);
-            $config = array(
-                CURLOPT_URL => $url.'?'.oauth_http_build_query($params),
-                CURLOPT_PORT => $port,
-                CURLOPT_POST => false,
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_SSL_VERIFYHOST => 2,
-                CURLOPT_SSL_VERIFYPEER => true,
-                CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
-            );
-            $result = mahara_http_request($config);
-            if ($result->info['http_code'] == 200 && !empty($result->data)) {
-                $data = json_decode($result->data, true);
-                if (isset($data['embedLink']) && !empty($data['embedLink'])) {
-                    return $data['embedLink'];
-                } else {
-                    // For non Google Docs files 'alternateLink' is returned instead of 'embedLink'.
-                    // Replace '/edit' at the end of that link with '/preview'...
-                    // SEE: http://stackoverflow.com/questions/12094932/change-alternatelink-edit-to-embedlink-preview
-                    return str_replace("/edit", "/preview", $data['alternateLink']);
-                }
-            } else {
-                return null;
-            }
-         } else {
-            throw new ConfigException('Can\'t find Google Drive API consumer ID and/or consumer secret.');
+        else {
+            $SESSION->add_error_msg('Can\'t find Google Drive consumer key and/or consumer secret.');
         }
     }
 
 }
-
-?>

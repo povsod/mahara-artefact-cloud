@@ -5,7 +5,7 @@
  * @subpackage blocktype-picasa
  * @author     Gregor Anzelj
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2012-2015 Gregor Anzelj, gregor.anzelj@gmail.com
+ * @copyright  (C) 2012-2016 Gregor Anzelj, info@povsod.com
  *
  */
 
@@ -43,6 +43,7 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
         $slideshow = (!empty($configdata['slideshow']) ? $configdata['slideshow'] : false);
         
         $smarty = smarty_core();
+        $smarty->assign('SERVICE', 'picasa');
         switch ($display) {
             case 'embed':
                 $html = '<div class="thumbnails">';
@@ -68,15 +69,26 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
                 break;
             case 'list':
             default:
-				$file = self::get_file_info($selected[0]);
-				$folder = $file['parent_id'];
+                if (!empty($selected)) {
+                    list($type, $item) = explode('-', $selected[0]);
+                    if ($type == 'file') {
+                        $file = self::get_file_info($item);        
+                        $folder = $file['parent_id'];
+                    }
+                    else {
+                        $folder = $selected[0];
+                    }
+                }
+                else {
+                    $folder = 0;
+                }
                 $data = self::get_filelist($folder, $selected, $ownerid);
                 $smarty->assign('folders', $data['folders']);
                 $smarty->assign('files', $data['files']);
         }
         $smarty->assign('viewid', $viewid);
         $smarty->assign('SERVICE', 'picasa');
-        return $smarty->fetch('blocktype:picasa:' . $display . '.tpl');
+        return $smarty->fetch('artefact:cloud:' . $display . '.tpl');
     }
 
     public static function has_instance_config() {
@@ -94,8 +106,8 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
         $view = new View($viewid);
         $ownerid = $view->get('owner');
         
-        $data = ArtefactTypeCloud::get_user_preferences('google', $ownerid);
-        if ($data) {
+        $consumer = self::get_service_consumer();
+        if (isset($consumer->usrprefs['access_token']) && !empty($consumer->usrprefs['access_token'])) {
             return array(
                 'picasalogo' => array(
                     'type' => 'html',
@@ -123,11 +135,9 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
                 'display' => array(
                     'type' => 'radio',
                     'title' => get_string('display','blocktype.cloud/picasa'),
-                    //'description' => get_string('displaydesc','blocktype.cloud/picasa') . '<br>' . get_string('displaydesc2','blocktype.cloud/picasa'),
                     'defaultvalue' => (!empty($configdata['display']) ? hsc($configdata['display']) : 'list'),
                     'options' => array(
                         'list'  => get_string('displaylist','blocktype.cloud/picasa'),
-                        //'icon'  => get_string('displayicon','blocktype.cloud/picasa'),
                         'embed' => get_string('displayembed','blocktype.cloud/picasa')
                     ),
                     'separator' => '<br />',
@@ -179,7 +189,7 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
                 'picasaisconnect' => array(
                     'type' => 'cancel',
                     'value' => get_string('connecttopicasa', 'blocktype.cloud/picasa'),
-                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/pcasa/account.php?action=login',
+                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/pcasa/account.php?action=login&view=' . $viewid,
                 ),
             );
         }
@@ -218,36 +228,19 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
     }
 
     public static function get_config_options() {
+        global $THEME;
         $wwwroot = str_replace('http', 'https', get_config('wwwroot'));
         $wwwroot = str_replace('httpss', 'https', get_config('wwwroot'));
         $elements = array();
         $elements['applicationdesc'] = array(
             'type'  => 'html',
-            'value' => get_string('applicationdesc', 'blocktype.cloud/picasa', '<a href="https://cloud.google.com/console#/project" target="_blank">', '</a>'),
-        );
-        $elements['brandinginformation'] = array(
-            'type' => 'fieldset',
-            'legend' => get_string('brandinginformation', 'blocktype.cloud/picasa'),
-            'elements' => array(
-                'applicationname' => array(
-                    'type'         => 'text',
-                    'title'        => get_string('productname', 'blocktype.cloud/picasa'),
-                    'defaultvalue' => get_config('sitename'),
-                    'description'  => get_string('productnamedesc', 'blocktype.cloud/picasa'),
-                    'readonly'     => true,
-                ),
-                'applicationicon' => array(
-                    'type'         => 'html',
-                    'title'        => get_string('productlogo', 'blocktype.cloud/picasa'),
-                    'value'        => '<table border="0"><tr style="text-align:center">
-                                       <td style="vertical-align:bottom"><img src="'.get_config('wwwroot').'artefact/cloud/icons/120x060.png" border="0" style="border:1px solid #ccc"><br>120x60</td>
-                                       </table>',
-                    'description'  => get_string('productlogodesc', 'blocktype.cloud/picasa'),
-                ),
-            )
+            'value' => get_string('applicationdesc', 'blocktype.cloud/picasa', '<a href="https://console.cloud.google.com/apis/credentials" target="_blank">', '</a>'),
         );
         $elements['webappsclientid'] = array(
             'type' => 'fieldset',
+            'class' => 'first',
+            'collapsible' => true,
+            'collapsed' => false,
             'legend' => get_string('webappsclientid', 'blocktype.cloud/picasa'),
             'elements' => array(
                 'consumerkey' => array(
@@ -255,29 +248,70 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
                     'title'        => get_string('consumerkey', 'blocktype.cloud/picasa'),
                     'defaultvalue' => get_config_plugin('blocktype', 'picasa', 'consumerkey'),
                     'description'  => get_string('consumerkeydesc', 'blocktype.cloud/picasa'),
-                    'size' => 50,
-                    'rules' => array('required' => true),
+                    'rules'        => array('required' => true),
                 ),
                 'consumersecret' => array(
                     'type'         => 'text',
                     'title'        => get_string('consumersecret', 'blocktype.cloud/picasa'),
                     'defaultvalue' => get_config_plugin('blocktype', 'picasa', 'consumersecret'),
                     'description'  => get_string('consumersecretdesc', 'blocktype.cloud/picasa'),
-                    'size' => 50,
-                    'rules' => array('required' => true),
+                    'rules'        => array('required' => true),
                 ),
                 'redirecturl' => array(
                     'type'         => 'text',
                     'title'        => get_string('redirecturl', 'blocktype.cloud/picasa'),
                     'defaultvalue' => $wwwroot . 'artefact/cloud/blocktype/picasa/callback.php',
                     'description'  => get_string('redirecturldesc', 'blocktype.cloud/picasa'),
-                    'size' => 70,
-                    'readonly' => true,
-                    'rules' => array('required' => true),
+                    'rules'        => array('required' => true),
+                ),
+            )
+        );
+        $elements['brandinginformation'] = array(
+            'type' => 'fieldset',
+            'class' => 'last',
+            'collapsible' => true,
+            'collapsed' => false,
+            'legend' => get_string('brandinginformation', 'blocktype.cloud/picasa'),
+            'elements' => array(
+                'applicationname' => array(
+                    'type'         => 'text',
+                    'title'        => get_string('productname', 'blocktype.cloud/picasa'),
+                    'defaultvalue' => get_config('sitename'),
+                    'description'  => get_string('productnamedesc', 'blocktype.cloud/picasa'),
+                ),
+                'applicationweb' => array(
+                    'type'         => 'text',
+                    'title'        => get_string('productweb', 'blocktype.cloud/picasa'),
+                    'defaultvalue' => get_config('wwwroot'),
+                    'description'  => get_string('productwebdesc', 'blocktype.cloud/picasa'),
+                ),
+                'applicationiconurl' => array(
+                    'type'         => 'text',
+                    'title'        => get_string('productlogo', 'blocktype.cloud/picasa'),
+                    'defaultvalue' => get_config('wwwroot') . 'artefact/cloud/theme/raw/static/images/120x120.png',
+                ),
+                'applicationicon' => array(
+                    'type'         => 'html',
+                    'title'        => null,
+                    'value'        => '<table border="0"><tr style="text-align:center">
+                                       <td style="vertical-align:bottom"><img src="'.$THEME->get_url('images/120x120.png', false, 'artefact/cloud').'" border="0" style="border:1px solid #ccc"><br>120x120</td>
+                                       </table>',
+                    'description'  => get_string('productlogodesc', 'blocktype.cloud/picasa'),
+                ),
+                'privacyurl' => array(
+                    'type'         => 'text',
+                    'title'        => get_string('privacyurl', 'blocktype.cloud/picasa'),
+                    'defaultvalue' => get_config('wwwroot') . 'privacy.php',
+                ),
+                'termsurl' => array(
+                    'type'         => 'text',
+                    'title'        => get_string('termsurl', 'blocktype.cloud/picasa'),
+                    'defaultvalue' => get_config('wwwroot') . 'terms.php',
                 ),
             )
         );
         return array(
+            'class' => 'panel panel-body',
             'elements' => $elements,
         );
 
@@ -310,43 +344,43 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
         $service->authurl    = 'https://accounts.google.com/o/oauth2/';
         $service->key        = get_config_plugin('blocktype', 'picasa', 'consumerkey');
         $service->secret     = get_config_plugin('blocktype', 'picasa', 'consumersecret');
-		// If SSL is set then force SSL URL for callback
-		if ($service->ssl) {
+        // If SSL is set then force SSL URL for callback
+        if ($service->ssl) {
             $wwwroot = str_replace('http://', 'https://', get_config('wwwroot'));
-		}
+        }
         $service->callback   = $wwwroot . 'artefact/cloud/blocktype/picasa/callback.php';
         $service->usrprefs   = ArtefactTypeCloud::get_user_preferences('google', $owner);
         return $service;
     }
 
     public function service_list() {
+        global $SESSION;
         $consumer = self::get_service_consumer();
+        $service = new StdClass();
+        $service->name = 'picasa';
+        $service->url = 'https://picasaweb.google.com';
+        $service->auth = false;
+        $service->manage = false;
+        $service->pending = false;
+
         if (!empty($consumer->key) && !empty($consumer->secret)) {
             if (isset($consumer->usrprefs['refresh_token']) && !empty($consumer->usrprefs['refresh_token'])) {
-                return array(
-                    'service_name'   => 'picasa',
-                    'service_url'    => 'https://picasaweb.google.com',
-                    'service_auth'   => true,
-                    'service_manage' => true,
-                    //'revoke_access'  => true,
-                );
-            } else {
-                return array(
-                    'service_name'   => 'picasa',
-                    'service_url'    => 'https://picasaweb.google.com',
-                    'service_auth'   => false,
-                    'service_manage' => false,
-                    //'revoke_access'  => false,
-                );
+                $service->auth = true;
+                $service->manage = true;
+                $service->account = self::account_info();
             }
-        } else {
-            throw new ConfigException('Can\'t find Picasa API consumer ID and/or consumer secret.');
         }
+        else {
+            $service->pending = true;
+            $SESSION->add_error_msg('Can\'t find Picasa consumer key and/or consumer secret.');
+        }
+        return $service;
     }
     
     // SEE: https://developers.google.com/accounts/docs/OAuth2WebServer#formingtheurl
     // SEE: https://developers.google.com/picasa-web/docs/2.0/developers_guide_protocol#Audience
     public function request_token() {
+        global $SESSION;
         $consumer = self::get_service_consumer();
         if (!empty($consumer->key) && !empty($consumer->secret)) {
             $url = $consumer->authurl.'auth';
@@ -364,8 +398,9 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
             $query = oauth_http_build_query($params);
             $request_url = $url . ($query ? ('?' . $query) : '' );
             redirect($request_url);
-        } else {
-            throw new ConfigException('Can\'t find Picasa API consumer key and/or consumer secret.');
+        }
+        else {
+            $SESSION->add_error_msg('Can\'t find Picasa consumer key and/or consumer secret.');
         }
     }
 
@@ -394,21 +429,23 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
                 CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
             );
             $result = mahara_http_request($config);
-            if ($result->info['http_code'] == 200 && !empty($result->data)) {
+            if (isset($result->data) && !empty($result->data) &&
+                isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
                 $data = json_decode($result->data, true);
                 return $data;
             }
             else {
-                $SESSION->add_error_msg(get_string('accesstokennotreturned', 'blocktype.cloud/picasa'));
+                $SESSION->add_error_msg(get_string('accesstokennotreturned', 'artefact.cloud'));
             }
-        } else {
-            throw new ConfigException('Can\'t find Picasa API consumer ID and/or consumer secret.');
+        }
+        else {
+            $SESSION->add_error_msg('Can\'t find Picasa consumer key and/or consumer secret.');
         }
     }
 
     // SEE: https://developers.google.com/accounts/docs/OAuth2WebServer#refresh
     public function check_access_token($owner=null) {
-        global $USER;
+        global $USER, $SESSION;
         $consumer = self::get_service_consumer($owner);
         if (!empty($consumer->key) && !empty($consumer->secret)) {
             // Find out when access token actually expires and take away 10 seconds
@@ -437,7 +474,8 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
                     CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
                 );
                 $result = mahara_http_request($config);
-                if ($result->info['http_code'] == 200 && !empty($result->data)) {
+            if (isset($result->data) && !empty($result->data) &&
+                isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
                     $prefs = json_decode($result->data, true);
                     // Request for new access_token doesn't return refresh_token at all!
                     // Add refresh_token so we'll be able to get new access_token in the future...
@@ -450,8 +488,9 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
             else {
                 return $consumer->usrprefs['access_token'];
             }
-        } else {
-            throw new ConfigException('Can\'t find Picasa API consumer ID and/or consumer secret.');
+        }
+        else {
+            $SESSION->add_error_msg('Can\'t find Picasa consumer key and/or consumer secret.');
         }
     }
 
@@ -462,6 +501,7 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
     
     // SEE: https://developers.google.com/accounts/docs/OAuth2WebServer#tokenrevoke
     public function revoke_access() {
+        global $SESSION;
         $consumer = self::get_service_consumer();
         if (!empty($consumer->key) && !empty($consumer->secret)) {
             // Construct revoke url, for revokin access...
@@ -475,8 +515,9 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
             curl_setopt($ch, CURLOPT_POST, false);
             $result = curl_exec($ch);
             curl_close($ch);
-        } else {
-            throw new ConfigException('Can\'t find Picasa API consumer key and/or consumer secret.');
+        }
+        else {
+            $SESSION->add_error_msg('Can\'t find Picasa consumer key and/or consumer secret.');
         }
     }
     
@@ -484,8 +525,21 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
     // SEE: https://developers.google.com/drive/v2/reference/about/get (quota and other user info)
     // SEE: https://developers.google.com/picasa-web/faq#quota         (picasa web quota)
     public function account_info() {
+        global $SESSION;
         $consumer = self::get_service_consumer();
         $token = self::check_access_token();
+
+        $info = new StdClass();
+        $info->service_name = 'picasa';
+        $info->service_auth = false;
+        $info->user_id      = null;
+        $info->user_name    = null;
+        $info->user_email   = null;
+        $info->user_profile = null;
+        $info->space_used   = null;
+        $info->space_amount = null;
+        $info->space_ratio  = null;
+
         if (!empty($consumer->key) && !empty($consumer->secret)) {
             $url = $consumer->baseurl.'oauth2/v1/userinfo';
             $port = $consumer->ssl ? '443' : '80';
@@ -500,7 +554,8 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
                 CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
             );
             $result = mahara_http_request($config);
-            if ($result->info['http_code'] == 200 && !empty($result->data)) {
+            if (isset($result->data) && !empty($result->data) &&
+                isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
                 $data = json_decode($result->data, true);
                 // Get user's quota information...
                 $url2 = $consumer->picasaurl.'user/default';
@@ -521,32 +576,26 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
                 foreach ($xml->getElementsByTagNameNS('http://schemas.google.com/photos/2007', '*') as $element) {
                     $gphoto[$element->localName] = $element->nodeValue;
                 }
-                return array(
-                    'service_name' => 'picasa',
-                    'service_auth' => true,
-                    'user_id'      => $data['id'],
-                    'user_name'    => $data['name'],
-                    'user_email'   => $data['email'],
-                    'user_profile' => $data['link'],
-                    'space_used'   => bytes_to_size1024(floatval($gphoto['quotacurrent'])),
-                    'space_amount' => bytes_to_size1024(floatval($gphoto['quotalimit'])),
-                    'space_ratio'  => number_format((floatval($gphoto['quotacurrent'])/floatval($gphoto['quotalimit']))*100, 2),
-                );
-            } else {
-                return array(
-                    'service_name' => 'picasa',
-                    'service_auth' => false,
-                    'user_id'      => null,
-                    'user_name'    => null,
-                    'user_email'   => null,
-                    'user_profile' => null,
-                    'space_used'   => null,
-                    'space_amount' => null,
-                    'space_ratio'  => null,
-                );
+
+                $info->service_name = 'picasa';
+                $info->service_auth = true;
+                $info->user_id      = $data['id'];
+                $info->user_name    = $data['name'];
+                $info->user_email   = $data['email'];
+                $info->user_profile = $data['link'];
+                $info->space_used   = bytes_to_size1024(floatval($gphoto['quotacurrent']));
+                $info->space_amount = bytes_to_size1024(floatval($gphoto['quotalimit']));
+                $info->space_ratio  = number_format((floatval($gphoto['quotacurrent'])/floatval($gphoto['quotalimit']))*100, 2);
+                return $info;
             }
-         } else {
-            throw new ConfigException('Can\'t find Picasa API consumer ID and/or consumer secret.');
+            else {
+                $httpstatus = get_http_status($result->info['http_code']);
+                $SESSION->add_error_msg($httpstatus);
+                log_warn($httpstatus);
+            }
+        }
+        else {
+            $SESSION->add_error_msg('Can\'t find Picasa consumer key and/or consumer secret.');
         }
     }
     
@@ -562,7 +611,7 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
      *
      */
     public function get_filelist($folder_id=0, $selected=array(), $owner=null) {
-        global $THEME;
+        global $SESSION;
 
         // Get folder contents...
         $consumer = self::get_service_consumer($owner);
@@ -570,7 +619,8 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
         if (!empty($consumer->key) && !empty($consumer->secret)) {
             if ($folder_id == 0) {
                 $url = $consumer->picasaurl.'user/default';
-            } else {
+            }
+            else {
                 $url = $consumer->picasaurl.'user/default/albumid/'.$folder_id;
             }
             $port = $consumer->ssl ? '443' : '80';
@@ -580,7 +630,8 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
             // Get number of photos in an album with gphoto:numphotos property.
             if ($folder_id == 0) {
                 $params['fields'] = 'gphoto:*,entry[not(gphoto:albumType)]';
-            } else {
+            }
+            else {
                 $params['fields'] = 'entry[gphoto:size]';
             }
             $config = array(
@@ -593,7 +644,8 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
                 CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
             );
             $result = mahara_http_request($config);
-            if ($result->info['http_code'] == 200 && !empty($result->data)) {
+            if (isset($result->data) && !empty($result->data) &&
+                isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
                 $data = oauth_parse_xml($result->data);
                 $output = array(
                     'folders' => array(),
@@ -615,15 +667,22 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
                     foreach($albums as $album) {
                         $id = basename($album['id']);
                         if (in_array('folder-'.$id, $selected)) {
-                            $icon        = $THEME->get_url('images/folder.png');
                             $title       = $album['title'];
                             $description = '';
                             $size        = bytes_to_size1024($sizes[$i]);
                             $ctime       = format_date(strtotime($album['published']), 'strftimedaydate');
                             $files       = self::get_folder_files($id);
-                            $output['folders'][] = array('iconsrc' => $icon, 'id' => $id, 'title' => $title, 'description' => $description, 'size' => $size, 'ctime' => $ctime, 'files' => $files);
+                            $output['folders'][] = array(
+                                'id' => $id,
+                                'title' => $title,
+                                'description' => $description,
+                                'artefacttype' => 'folder-open',
+                                'size' => $size,
+                                'ctime' => $ctime,
+                                'files' => $files,
+                            );
                         }
-                        $i = $i + 1;
+                        $i++;
                     }
                 }
                 else {
@@ -640,7 +699,8 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
                     if (count($sizes) == 1) {
                         // If there is only one photo in the album
                         $photos = array('0' => $data['entry']);
-                    } else {
+                    }
+                    else {
                         $photos = $data['entry'];
                     }
                     $i = 0;
@@ -648,22 +708,33 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
                         $id = basename($photo['id']);
                         if (in_array('file-'.$id, $selected)) {
                             $type        = 'file';
-                            $icon        = $THEME->get_url('images/file.png');
                             $title       = $photo['title'];
                             $description = (isset($data['subtitle']) && !is_array($data['subtitle']) ? $data['subtitle'] : null);
                             $size        = bytes_to_size1024($sizes[$i]);
                             $ctime       = format_date(strtotime($photo['published']), 'strftimedaydate');
-                            $output['files'][] = array('iconsrc' => $icon, 'id' => $id, 'type' => $type, 'title' => $title, 'description' => $description, 'size' => $size, 'ctime' => $ctime);
+                            $output['files'][] = array(
+                                'id' => $id,
+                                'type' => $type,
+                                'title' => $title,
+                                'description' => $description,
+                                'artefacttype' => 'picture-o',
+                                'size' => $size,
+                                'ctime' => $ctime,
+                            );
                         }
-                        $i = $i + 1;
+                        $i++;
                     }
                 }
                 return $output;
-            } else {
-                return array();
             }
-         } else {
-            throw new ConfigException('Can\'t find Picasa API consumer ID and/or consumer secret.');
+            else {
+                $httpstatus = get_http_status($result->info['http_code']);
+                $SESSION->add_error_msg($httpstatus);
+                log_warn($httpstatus);
+            }
+        }
+        else {
+            $SESSION->add_error_msg('Can\'t find Picasa consumer key and/or consumer secret.');
         }
     }
 
@@ -686,17 +757,25 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
      *
      */
     public function get_folder_content($folder_id=0, $options, $block=0) {
-        global $THEME;
+        global $SESSION;
         
+        // $folder_id is globally set to '0', set it to 0
+        // as it is the Picasa default root folder ...
+        if ($folder_id == '0') {
+            $folder_id = 0;
+        }
+
         // Get selected artefacts (folders and/or files)
         if ($block > 0) {
             $data = unserialize(get_field('block_instance', 'configdata', 'id', $block));
             if (!empty($data) && isset($data['artefacts'])) {
                 $artefacts = $data['artefacts'];
-            } else {
+            }
+            else {
                 $artefacts = array();
             }
-        } else {
+        }
+        else {
             $artefacts = array();
         }
         
@@ -709,11 +788,11 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
         $selectMultiple = (boolean) $options[5];
 
         // Get folder parent...
-		$parent_id = 0; // either 'root' folder itself or parent is 'root' folder
-		$folder = self::get_folder_info($folder_id);
-		if (!empty($folder['parent_id'])) {
-			$parent_id = $folder['parent_id'];
-		}
+        $parent_id = 0; // either 'root' folder itself or parent is 'root' folder
+        $folder = self::get_folder_info($folder_id);
+        if (!empty($folder['parent_id'])) {
+            $parent_id = $folder['parent_id'];
+        }
 
         // Get folder contents...
         $consumer = self::get_service_consumer();
@@ -721,7 +800,8 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
         if (!empty($consumer->key) && !empty($consumer->secret)) {
             if ($folder_id == 0) {
                 $url = $consumer->picasaurl.'user/default';
-            } else {
+            }
+            else {
                 $url = $consumer->picasaurl.'user/default/albumid/'.$folder_id;
             }
             $port = $consumer->ssl ? '443' : '80';
@@ -742,7 +822,8 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
                 CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
             );
             $result = mahara_http_request($config);
-            if ($result->info['http_code'] == 200 && !empty($result->data)) {
+            if (isset($result->data) && !empty($result->data) &&
+                isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
                 $data = oauth_parse_xml($result->data);
                 $output = array();
                 $count = 0;
@@ -751,25 +832,27 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
                 if ($folder_id != 0) {
                     $type        = 'parentfolder';
                     $foldername  = get_string('parentfolder', 'artefact.file');
-                    $title       = '<a class="changefolder" href="javascript:void(0)" id="' . $parent_id . '" title="' . get_string('gotofolder', 'artefact.file', $foldername) . '"><img src="' . $THEME->get_url('images/parentfolder.png') . '"></a>';
-                    $output['aaData'][] = array('', $title, '', $type);
+                    $icon        = '<span class="icon icon-level-up icon-lg"></span>';
+                    $title       = '<a class="changefolder" href="javascript:void(0)" id="' . $parent_id . '" title="' . get_string('gotofolder', 'artefact.file', $foldername) . '">' . $foldername . '</a>';
+                    $output['data'][] = array($icon, $title, '', $type);
                 }
                 if ($folder_id == 0) {
                     $albums = $data['entry'];
                     foreach($albums as $album) {
-                            $id    = basename($album['id']);
-                            $type  = 'folder';
-                            $icon  = '<img src="' . $THEME->get_url('images/folder.png') . '">';
-                            $title = '<a class="changefolder" href="javascript:void(0)" id="' . $id . '" title="' . get_string('gotofolder', 'artefact.file', $album['title']) . '">' . $album['title'] . '</a>';
-                            if ($selectFolders) {
-                                $selected = (in_array('folder-'.$id, $artefacts) ? ' checked' : '');
-                                $controls = '<input type="' . ($selectMultiple ? 'checkbox' : 'radio') . '" name="artefacts[]" id="artefacts[]" value="folder-' . $id . '"' . $selected . '>';
-                            } else {
-                                $controls = '';
-                            }
-                            $output['aaData'][] = array($icon, $title, $controls, $type);
-                            $count++;
+                        $id    = basename($album['id']);
+                        $type  = 'folder';
+                        $icon  = '<span class="icon-folder-open icon icon-lg"></span>';
+                        $title = '<a class="changefolder" href="javascript:void(0)" id="' . $id . '" title="' . get_string('gotofolder', 'artefact.file', $album['title']) . '">' . $album['title'] . '</a>';
+                        if ($selectFolders) {
+                            $selected = (in_array('folder-'.$id, $artefacts) ? ' checked' : '');
+                            $controls = '<input type="' . ($selectMultiple ? 'checkbox' : 'radio') . '" name="artefacts[]" id="artefacts[]" value="folder-' . $id . '"' . $selected . '>';
                         }
+                        else {
+                            $controls = '';
+                        }
+                        $output['data'][] = array($icon, $title, $controls, $type);
+                        $count++;
+                    }
                 }
                 else {
                     // Get gphoto:numphotos from 'gphoto' namespace
@@ -784,47 +867,59 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
                     if ($numphotos == 1) {
                         // If there is only one photo in the album
                         $photos = array('0' => $data['entry']);
-                    } else {
+                    }
+                    else {
                         $photos = $data['entry'];
                     }
                     foreach($photos as $photo) {
-                        $id       = basename($photo['id']);
-                        $type     = 'file';
-                        $icon     = '<img src="' . $THEME->get_url('images/file.png') . '">';
-                        $title    = '<a class="filedetails" href="' . get_config('wwwroot') . 'artefact/cloud/blocktype/picasa/details.php?id=' . $id . '" title="' . get_string('filedetails', 'artefact.cloud', $photo['title']) . '">' . $photo['title'] . '</a>';
+                        $id    = basename($photo['id']);
+                        $type  = 'file';
+                        $icon  = '<span class="icon-picture-o icon icon-lg"></span>';
+                        $title = '<a class="filedetails" href="' . get_config('wwwroot') . 'artefact/cloud/blocktype/picasa/details.php?id=' . $id . '" title="' . get_string('filedetails', 'artefact.cloud', $photo['title']) . '">' . $photo['title'] . '</a>';
                         if ($selectFiles && !$manageButtons) {
                             $selected = (in_array('file-'.$id, $artefacts) ? ' checked' : '');
                             $controls = '<input type="' . ($selectMultiple ? 'checkbox' : 'radio') . '" name="artefacts[]" id="artefacts[]" value="file-' . $id . '"' . $selected . '>';
-                        } elseif ($manageButtons) {
-                            $controls  = '<div class="btns3">';
-                            $controls .= '<a title="' . get_string('preview', 'artefact.cloud') . '" href="preview.php?id=' . $id . '" target="_blank"><img src="' . get_config('wwwroot') . 'artefact/cloud/theme/raw/static/images/btn_preview.png" alt="' . get_string('preview', 'artefact.cloud') . '"></a>';
-                            $controls .= '<a title="' . get_string('save', 'artefact.cloud') . '" href="download.php?id=' . $id . '&save=1"><img src="' . get_config('wwwroot') . 'artefact/cloud/theme/raw/static/images/btn_save.png" alt="' . get_string('save', 'artefact.cloud') . '"></a>';
-                            $controls .= '<a title="' . get_string('download', 'artefact.cloud') . '" href="download.php?id=' . $id . '"><img src="' . get_config('wwwroot') . 'artefact/cloud/theme/raw/static/images/btn_download.png" alt="' . get_string('download', 'artefact.cloud') . '"></a>';
+                        }
+                        elseif ($manageButtons) {
+                            $controls  = '<div class="btn-group">';
+                            $controls .= '<a class="btn btn-default btn-xs" title="' . get_string('save', 'artefact.cloud') . '" href="download.php?id=' . $id . '&save=1"><span class="icon icon-floppy-o icon-lg"></span></a>';
+                            $controls .= '<a class="btn btn-default btn-xs" title="' . get_string('download', 'artefact.cloud') . '" href="download.php?id=' . $id . '"><span class="icon icon-download icon-lg"></span></a>';
                             $controls .= '</div>';
-                        } else {
+                        }
+                        else {
                             $controls = '';
                         }
-                        $output['aaData'][] = array($icon, $title, $controls, $type);
+                        $output['data'][] = array($icon, $title, $controls, $type);
                         $count++;
                     }
                 }
-                $output['iTotalRecords'] = $count;
-                $output['iTotalDisplayRecords'] = $count;
+                $output['recordsTotal'] = $count;
+                $output['recordsFiltered'] = $count;
                 return json_encode($output);
-            } else {
-                return array();
             }
-         } else {
-            throw new ConfigException('Can\'t find Picasa API consumer ID and/or consumer secret.');
+            else {
+                $httpstatus = get_http_status($result->info['http_code']);
+                $SESSION->add_error_msg($httpstatus);
+                log_warn($httpstatus);
+            }
+        }
+        else {
+            $SESSION->add_error_msg('Can\'t find Picasa consumer key and/or consumer secret.');
         }
     }
 
     // SEE: https://developers.google.com/picasa-web/docs/2.0/developers_guide_protocol#ListPhotos
     public function get_folder_info($folder_id=0, $owner=null) {
+        global $SESSION;
         $consumer = self::get_service_consumer($owner);
         $token = self::check_access_token($owner);
         if (!empty($consumer->key) && !empty($consumer->secret)) {
-            $url = $consumer->picasaurl.'user/default/albumid/'.$folder_id;
+            if ($folder_id == 0) {
+                $url = $consumer->picasaurl.'user/default';
+            }
+            else {
+                $url = $consumer->picasaurl.'user/default/albumid/'.$folder_id;
+            }
             $port = $consumer->ssl ? '443' : '80';
             $params = array('access_token' => $token);
             $config = array(
@@ -837,7 +932,8 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
                 CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
             );
             $result = mahara_http_request($config);
-            if ($result->info['http_code'] == 200 && !empty($result->data)) {
+            if (isset($result->data) && !empty($result->data) &&
+                isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
                 $data = oauth_parse_xml($result->data);
                 $previewurl = '';
                 // Extract preview link from array of different album links
@@ -855,28 +951,31 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
                 }
                 $info = array(
                     'id'          => $folder_id,
-					'parent_id'   => 0, // All albums have one parent = 'root' folder
+                    'parent_id'   => 0, // All albums have one parent = 'root' folder
                     'name'        => $data['title'],
-                    'shared'      => $data['rights'],
+                    'shared'      => (isset($data['rights']) ? $data['rights'] : null),
                     'size'        => $gphoto['bytesUsed'],
-                    'preview'     => $previewurl,
-                    'description' => ($data['subtitle'] ? $data['subtitle'] : null),
+                    'description' => (!empty($data['subtitle']) && is_string($data['subtitle']) ? $data['subtitle'] : null),
                     'created'     => ($gphoto['timestamp'] ? format_date(substr($gphoto['timestamp'], 0, -3), 'strfdaymonthyearshort') : null),
                     'updated'     => ($data['updated'] ? format_date(strtotime($data['updated']), 'strfdaymonthyearshort') : null),
                 );
                 return $info;
-            } else {
-                return null;
             }
-         } else {
-            throw new ConfigException('Can\'t find Picasa API consumer ID and/or consumer secret.');
+            else {
+                $httpstatus = get_http_status($result->info['http_code']);
+                $SESSION->add_error_msg($httpstatus);
+                log_warn($httpstatus);
+            }
+        }
+        else {
+            $SESSION->add_error_msg('Can\'t find Picasa consumer key and/or consumer secret.');
         }
     }
 
     // Get all the photos that are contained in a specified album
     // SEE: https://developers.google.com/picasa-web/docs/2.0/developers_guide_protocol#ListPhotos
     public function get_folder_files($folder_id=0, $owner=null) {
-        global $THEME;
+        global $SESSION;
         $consumer = self::get_service_consumer($owner);
         $token = self::check_access_token($owner);
         if (!empty($consumer->key) && !empty($consumer->secret)) {
@@ -896,7 +995,8 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
                 CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
             );
             $result = mahara_http_request($config);
-            if ($result->info['http_code'] == 200 && !empty($result->data)) {
+            if (isset($result->data) && !empty($result->data) &&
+                isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
                 $data = oauth_parse_xml($result->data);
                 $files = array();
                 $sizes = array();
@@ -912,7 +1012,8 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
                 if (count($sizes) == 1) {
                     // If there is only one photo in the album
                     $photos = array('0' => $data['entry']);
-                } else {
+                }
+                else {
                     $photos = $data['entry'];
                 }
                 $i = 0;
@@ -920,27 +1021,39 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
                     foreach($photos as $photo) {
                         $id          = basename($photo['id']);
                         $type        = 'file';
-                        $icon        = $THEME->get_url('images/file.png');
                         $title       = $photo['title'];
-                        $description = (!empty($photo['summary']) ? $photo['summary'] : '');
+                        $description = (!empty($photo['summary']) && is_string($photo['summary']) ? $photo['summary'] : null);
                         $size        = bytes_to_size1024($sizes[$i]);
                         $ctime       = format_date(strtotime($photo['published']), 'strftimedaydate');
-                        $files[]     = array('iconsrc' => $icon, 'id' => $id, 'type' => $type, 'title' => $title, 'description' => $description, 'size' => $size, 'ctime' => $ctime);
-                        $i = $i + 1;
+                        $files[]     = array(
+                            'id' => $id,
+                            'type' => $type,
+                            'title' => $title,
+                            'description' => $description,
+                            'artefacttype' => 'picture-o',
+                            'size' => $size,
+                            'ctime' => $ctime,
+                        );
+                        $i++;
                     }
                 }
                 return $files;
-            } else {
-                return null;
             }
-         } else {
-            throw new ConfigException('Can\'t find Flickr API consumer ID and/or consumer secret.');
+            else {
+                $httpstatus = get_http_status($result->info['http_code']);
+                $SESSION->add_error_msg($httpstatus);
+                log_warn($httpstatus);
+            }
+        }
+        else {
+            $SESSION->add_error_msg('Can\'t find Picasa consumer key and/or consumer secret.');
         }
     }
 
     // SEE: https://developers.google.com/picasa-web/docs/2.0/developers_guide_protocol#UpdatePhotos
     // SEE: https://developers.google.com/picasa-web/docs/2.0/reference#Parameters   (imgmax parameter!)
     public function construct_photo_url($thumbnail_url='', $size) {
+        global $SESSION;
         // Picasa offers much more valid sizes for uploaded photos.
         // The selected sizes match the ones that Flickr offers...
         $validsizes = array(
@@ -967,13 +1080,14 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
             return str_replace($oldsize, $newsize, $thumbnail_url);
         }
         else {
-            throw new InvalidArgumentException("Undefined Picasa photo size: $size");
+            $SESSION->add_error_msg('Undefined Picasa photo size: $size');
         }
     }
 
     // SEE: https://developers.google.com/picasa-web/docs/2.0/developers_guide_protocol#UpdatePhotos
     // SEE: https://developers.google.com/picasa-web/docs/2.0/reference#Parameters  (imgmax parameter!)
     public function get_file_info($file_id=0, $owner=null) {
+        global $SESSION;
         $consumer = self::get_service_consumer($owner);
         $token = self::check_access_token($owner);
         if (!empty($consumer->key) && !empty($consumer->secret)) {
@@ -990,7 +1104,8 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
                 CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
             );
             $result = mahara_http_request($config);
-            if ($result->info['http_code'] == 200 && !empty($result->data)) {
+            if (isset($result->data) && !empty($result->data) &&
+                isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
                 $data = oauth_parse_xml($result->data);
                 // Extract preview link from array of different album links
                 foreach ($data['link'] as $link) {
@@ -1023,14 +1138,14 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
                 }
                 $info = array(
                     'id'          => $file_id,
-					'parent_id'   => $gphoto['albumid'],
+                    'parent_id'   => $gphoto['albumid'],
                     'name'        => $data['title'],
                     'width'       => $gphoto['width'],
                     'height'      => $gphoto['height'],
                     'bytes'       => ($gphoto['size'] > 0 ? $gphoto['size'] : '-'),
                     'size'        => ($gphoto['size'] > 0 ? bytes_to_size1024($gphoto['size']) : '-'),
                     'shared'      => $gphoto['access'], 
-                    'description' => (isset($data['subtitle']) && !is_array($data['subtitle']) ? $data['subtitle'] : null),
+                    'description' => (isset($data['subtitle']) && is_string($data['subtitle']) ? $data['subtitle'] : null),
                     'created'     => ($gphoto['timestamp'] ? format_date(substr($gphoto['timestamp'], 0, -3), 'strfdaymonthyearshort') : null),
                     'updated'     => ($data['updated'] ? format_date(strtotime($data['updated']), 'strfdaymonthyearshort') : null),
                     // URL to original photo (imgmax = 'd')
@@ -1039,17 +1154,22 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
                     'previewurl'  => (isset($media['thumbnail'][0]['url']) ? $media['thumbnail'][0]['url'] : null),
                 );
                 return $info;
-            } else {
-                return null;
             }
-         } else {
-            throw new ConfigException('Can\'t find Picasa API consumer ID and/or consumer secret.');
+            else {
+                $httpstatus = get_http_status($result->info['http_code']);
+                $SESSION->add_error_msg($httpstatus);
+                log_warn($httpstatus);
+            }
+        }
+        else {
+            $SESSION->add_error_msg('Can\'t find Picasa consumer key and/or consumer secret.');
         }
     }
 
     // SEE: https://developers.google.com/picasa-web/docs/2.0/developers_guide_protocol#UpdatePhotos
     // SEE: https://developers.google.com/picasa-web/docs/2.0/reference#Parameters   (imgmax parameter!)
     public function download_file($file_id=0, $owner=null) {
+        global $SESSION;
         $consumer = self::get_service_consumer($owner);
         $token = self::check_access_token($owner);
         if (!empty($consumer->key) && !empty($consumer->secret)) {
@@ -1066,7 +1186,8 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
                 CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
             );
             $result = mahara_http_request($config);
-            if ($result->info['http_code'] == 200 && !empty($result->data)) {
+            if (isset($result->data) && !empty($result->data) &&
+                isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
                 $download_url = '';
                 $xml = new DOMDocument();
                 $xml->loadXML($result->data);
@@ -1092,14 +1213,21 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
                 curl_close($ch);
                 return $result;
             }
-        } else {
-            throw new ConfigException('Can\'t find Picasa API consumer ID and/or consumer secret.');
+            else {
+                $httpstatus = get_http_status($result->info['http_code']);
+                $SESSION->add_error_msg($httpstatus);
+                log_warn($httpstatus);
+            }
+        }
+        else {
+            $SESSION->add_error_msg('Can\'t find Picasa consumer key and/or consumer secret.');
         }
     }
 
     // SEE: https://developers.google.com/picasa-web/docs/2.0/developers_guide_protocol#UpdatePhotos
     // SEE: https://developers.google.com/picasa-web/docs/2.0/reference#Parameters   (imgmax parameter!)
     public function embed_file($file_id=0, $options=array('size' => '512', 'frame' => false), $owner=null) {
+        global $SESSION;
         $consumer = self::get_service_consumer($owner);
         $token = self::check_access_token($owner);
         if (!empty($consumer->key) && !empty($consumer->secret)) {
@@ -1108,32 +1236,37 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
             $previewurl = self::construct_photo_url($photoinfo['previewurl'], '640');
             if ($options['frame']) {
                 $html = '<span style="float:left;padding:0.3em;">';
-            } else {
+            }
+            else {
                 $html = '<span style="float:left;">';
             }
             $slimbox2 = get_config_plugin('blocktype', 'gallery', 'useslimbox2');
             if ($slimbox2) {
                 $slimbox2attr = 'lightbox_' . $options['instanceid'];
-            } else {
+            }
+            else {
                 $slimbox2attr = null;
             }
             $html .= '<a rel="' . $slimbox2attr . '" href="' . $previewurl . '" title="' . $photoinfo['name'] . '" target="_blank">';
             $html .= '<img src="' . $photourl . '" alt="' . $photoinfo['name'] . '" title="' . $photoinfo['name'] . '"';
             if ($options['frame']) {
                 $html .= ' class="frame">';
-            } else {
+            }
+            else {
                 $html .= '>';
             }
             $html .= '</a></span>';
             return $html;
-        } else {
-            throw new ConfigException('Can\'t find Picasa API consumer ID and/or consumer secret.');
+        }
+        else {
+            $SESSION->add_error_msg('Can\'t find Picasa consumer key and/or consumer secret.');
         }
     }
 
     // SEE: https://developers.google.com/picasa-web/docs/2.0/developers_guide_protocol#UpdatePhotos
     // SEE: https://developers.google.com/picasa-web/docs/2.0/reference#Parameters   (imgmax parameter!)
     public function embed_folder($folder_id=0, $options=array('size' => '512', 'frame' => false, 'slideshow' => false), $owner=null) {
+        global $SSSION;
         $consumer = self::get_service_consumer($owner);
         $token = self::check_access_token($owner);
         if (!empty($consumer->key) && !empty($consumer->secret)) {
@@ -1153,7 +1286,8 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
                 CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
             );
             $result = mahara_http_request($config);
-            if ($result->info['http_code'] == 200 && !empty($result->data)) {
+            if (isset($result->data) && !empty($result->data) &&
+                isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
                 $data = oauth_parse_xml($result->data);
                 // Extract slideshow link from array of different album links
                 foreach ($data['link'] as $link) {
@@ -1198,7 +1332,8 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
                     }
                     if ($options['frame']) {
                         $html = '<span style="float:left;padding:0.3em;"><div class="frame" style="padding:5px;">';
-                    } else {
+                    }
+                    else {
                         $html = '<span style="float:left;"><div>';
                     }
                     $html .= '<object width="' . $slideshow['width'] . '" height="' . $slideshow['height'] . '">';
@@ -1222,7 +1357,8 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
                     if ($count == 1) {
                         // If there is only one photo in the album
                         $photos = array('0' => $data['entry']);
-                    } else {
+                    }
+                    else {
                         $photos = $data['entry'];
                     }
                     $html = '';
@@ -1231,30 +1367,17 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
                     }
                     return $html;
                 }
-            } else {
-                return null;
             }
-         } else {
-            throw new ConfigException('Can\'t find Flickr API consumer ID and/or consumer secret.');
+            else {
+                $httpstatus = get_http_status($result->info['http_code']);
+                $SESSION->add_error_msg($httpstatus);
+                log_warn($httpstatus);
+            }
         }
-    }
-
-    /*
-     * SEE: https://developers.google.com/picasa-web/docs/2.0/developers_guide_protocol#UpdatePhotos
-     * SEE: https://developers.google.com/picasa-web/docs/2.0/reference#Parameters   (imgmax parameter!)
-     */
-    public function public_url($file_id=0, $viewid=null, $owner=null) {
-        $consumer = self::get_service_consumer($owner);
-        $token = self::check_access_token($owner);
-        if (!empty($consumer->key) && !empty($consumer->secret)) {
-            $photoinfo = self::get_file_info($file_id, $owner);
-            $previewurl = self::construct_photo_url($photoinfo['previewurl'], '800');
-            return $previewurl;
-         } else {
-            throw new ConfigException('Can\'t find Picasa API consumer ID and/or consumer secret.');
+        else {
+            $SESSION->add_error_msg('Can\'t find Picasa consumer key and/or consumer secret.');
         }
     }
 
 }
 
-?>

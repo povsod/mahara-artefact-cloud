@@ -5,7 +5,7 @@
  * @subpackage blocktype-microsoftdrive
  * @author     Gregor Anzelj
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2012-2015 Gregor Anzelj, gregor.anzelj@gmail.com
+ * @copyright  (C) 2012-2016 Gregor Anzelj, info@povsod.com
  *
  */
 
@@ -40,6 +40,7 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
         $display  = (!empty($configdata['display']) ? $configdata['display'] : 'list');
         
         $smarty = smarty_core();
+        $smarty->assign('SERVICE', 'microsoftdrive');
         switch ($display) {
             case 'embed':
                 $html = '';
@@ -52,14 +53,19 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
                 break;
             case 'list':
             default:
-				$file = self::get_file_info($selected[0]);
-				$folder = $file['parent_id'];
+                if (!empty($selected)) {
+                    $file = self::get_file_info($selected[0]);
+                    $folder = $file['parent_id'];
+                }
+                else {
+                    $folder = '0';
+                }
                 $data = self::get_filelist($folder, $selected, $ownerid);
                 $smarty->assign('folders', $data['folders']);
                 $smarty->assign('files', $data['files']);
         }
         $smarty->assign('viewid', $viewid);
-        return $smarty->fetch('blocktype:microsoftdrive:' . $display . '.tpl');
+        return $smarty->fetch('artefact:cloud:' . $display . '.tpl');
     }
 
     public static function has_instance_config() {
@@ -77,8 +83,8 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
         $view = new View($viewid);
         $ownerid = $view->get('owner');
 
-        $data = ArtefactTypeCloud::get_user_preferences('microsoftdrive', $ownerid);
-        if ($data) {
+        $consumer = self::get_service_consumer();
+        if (isset($consumer->usrprefs['access_token']) && !empty($consumer->usrprefs['access_token'])) {
             return array(
                 'microsoftdrivelogo' => array(
                     'type' => 'html',
@@ -110,7 +116,6 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
                     'defaultvalue' => (!empty($configdata['display']) ? hsc($configdata['display']) : 'list'),
                     'options' => array(
                         'list'  => get_string('displaylist','blocktype.cloud/microsoftdrive'),
-                        //'icon'  => get_string('displayicon','blocktype.cloud/microsoftdrive'),
                         'embed' => get_string('displayembed','blocktype.cloud/microsoftdrive')
                     ),
                     'separator' => '<br />',
@@ -126,7 +131,7 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
                 'microsoftdriveisconnect' => array(
                     'type' => 'cancel',
                     'value' => get_string('connecttomicrosoftdrive', 'blocktype.cloud/microsoftdrive'),
-                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/microsoftdrive/account.php?action=login',
+                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/microsoftdrive/account.php?action=login&view=' . $viewid,
                 ),
             );
         }
@@ -162,6 +167,7 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
     }
 
     public static function get_config_options() {
+        global $THEME;
         $elements = array();
         $elements['applicationdesc'] = array(
             'type'  => 'html',
@@ -169,6 +175,9 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
         );
         $elements['basicinformation'] = array(
             'type' => 'fieldset',
+            'class' => 'first',
+            'collapsible' => true,
+            'collapsed' => false,
             'legend' => get_string('basicinformation', 'blocktype.cloud/microsoftdrive'),
             'elements' => array(
                 'applicationname' => array(
@@ -176,13 +185,12 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
                     'title'        => get_string('applicationname', 'blocktype.cloud/microsoftdrive'),
                     'defaultvalue' => get_config('sitename'),
                     'description'  => get_string('applicationnamedesc', 'blocktype.cloud/microsoftdrive'),
-                    'readonly'     => true,
                 ),
                 'applicationicon' => array(
                     'type'         => 'html',
                     'title'        => get_string('applicationicon', 'blocktype.cloud/microsoftdrive'),
                     'value'        => '<table border="0"><tr style="text-align:center">
-                                       <td style="vertical-align:bottom"><img src="'.get_config('wwwroot').'artefact/cloud/icons/048x048.png" border="0" style="border:1px solid #ccc"><br>48x48</td>
+                                       <td style="vertical-align:bottom"><img src="'.$THEME->get_url('images/048x048.png', false, 'artefact/cloud').'" border="0" style="border:1px solid #ccc"><br>48x48</td>
                                        </table>',
                     'description'  => get_string('applicationicondesc', 'blocktype.cloud/microsoftdrive'),
                 ),
@@ -190,20 +198,19 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
                     'type'         => 'text',
                     'title'        => get_string('applicationterms', 'blocktype.cloud/microsoftdrive'),
                     'defaultvalue' => get_config('wwwroot').'terms.php',
-                    'size' => 50,
-                    'readonly'     => true,
                 ),
                 'applicationprivacy' => array(
                     'type'         => 'text',
                     'title'        => get_string('applicationprivacy', 'blocktype.cloud/microsoftdrive'),
                     'defaultvalue' => get_config('wwwroot').'privacy.php',
-                    'size' => 50,
-                    'readonly'     => true,
                 ),
             )
         );
         $elements['apisettings'] = array(
             'type' => 'fieldset',
+            'class' => 'last',
+            'collapsible' => true,
+            'collapsed' => false,
             'legend' => get_string('apisettings', 'blocktype.cloud/microsoftdrive'),
             'elements' => array(
                 'consumerkey' => array(
@@ -211,29 +218,26 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
                     'title'        => get_string('consumerkey', 'blocktype.cloud/microsoftdrive'),
                     'defaultvalue' => get_config_plugin('blocktype', 'microsoftdrive', 'consumerkey'),
                     'description'  => get_string('consumerkeydesc', 'blocktype.cloud/microsoftdrive'),
-                    'size' => 50,
-                    'rules' => array('required' => true),
+                    'rules'        => array('required' => true),
                 ),
                 'consumersecret' => array(
                     'type'         => 'text',
                     'title'        => get_string('consumersecret', 'blocktype.cloud/microsoftdrive'),
                     'defaultvalue' => get_config_plugin('blocktype', 'microsoftdrive', 'consumersecret'),
                     'description'  => get_string('consumersecretdesc', 'blocktype.cloud/microsoftdrive'),
-                    'size' => 50,
-                    'rules' => array('required' => true),
+                    'rules'        => array('required' => true),
                 ),
                 'redirecturl' => array(
                     'type'         => 'text',
                     'title'        => get_string('redirecturl', 'blocktype.cloud/microsoftdrive'),
                     'defaultvalue' => get_config('wwwroot'),
                     'description'  => get_string('redirecturldesc', 'blocktype.cloud/microsoftdrive'),
-                    'size' => 50,
-                    'readonly' => true,
-                    'rules' => array('required' => true),
+                    'rules'        => array('required' => true),
                 ),
             )
         );
         return array(
+            'class' => 'panel panel-body',
             'elements' => $elements,
         );
 
@@ -265,43 +269,43 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
         $service->authurl    = 'https://login.live.com/';
         $service->key        = get_config_plugin('blocktype', 'microsoftdrive', 'consumerkey');
         $service->secret     = get_config_plugin('blocktype', 'microsoftdrive', 'consumersecret');
-		// If SSL is set then force SSL URL for callback
-		if ($service->ssl) {
+        // If SSL is set then force SSL URL for callback
+        if ($service->ssl) {
             $wwwroot = str_replace('http://', 'https://', get_config('wwwroot'));
-		}
+        }
         $service->callback   = $wwwroot . 'artefact/cloud/blocktype/microsoftdrive/callback.php';
         $service->usrprefs   = ArtefactTypeCloud::get_user_preferences('microsoftdrive', $owner);
         return $service;
     }
 
     public function service_list() {
+        global $SESSION;
         $consumer = self::get_service_consumer();
+        $service = new StdClass();
+        $service->name = 'microsoftdrive';
+        $service->url = 'http://onedrive.live.com';
+        $service->auth = false;
+        $service->manage = false;
+        $service->pending = false;
+
         if (!empty($consumer->key) && !empty($consumer->secret)) {
             if (isset($consumer->usrprefs['refresh_token']) && !empty($consumer->usrprefs['refresh_token'])) {
-                return array(
-                    'service_name'   => 'microsoftdrive',
-                    'service_url'    => 'http://onedrive.live.com',
-                    'service_auth'   => true,
-                    'service_manage' => true,
-                    //'revoke_access'  => true,
-                );
-            } else {
-                return array(
-                    'service_name'   => 'microsoftdrive',
-                    'service_url'    => 'http://onedrive.live.com',
-                    'service_auth'   => false,
-                    'service_manage' => false,
-                    //'revoke_access'  => false,
-                );
+                $service->auth = true;
+                $service->manage = true;
+                $service->account = self::account_info();
             }
-        } else {
-            throw new ConfigException('Can\'t find Live Connect consumer ID and/or consumer secret.');
         }
+        else {
+            $service->pending = true;
+            $SESSION->add_error_msg('Can\'t find Live consumer key and/or consumer secret.');
+        }
+        return $service;
     }
     
     // SEE: http://msdn.microsoft.com/en-us/library/dn659750.aspx
     // SEE: http://msdn.microsoft.com/en-us/library/dn631845.aspx#types
     public function request_token() {
+        global $SESSION;
         $consumer = self::get_service_consumer();
         if (!empty($consumer->key) && !empty($consumer->secret)) {
             $url = $consumer->authurl.'oauth20_authorize.srf';
@@ -315,8 +319,9 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
             $query = oauth_http_build_query($params);
             $request_url = $url . ($query ? ('?' . $query) : '' );
             redirect($request_url);
-        } else {
-            throw new ConfigException('Can\'t find Live Connect consumer key and/or consumer secret.');
+        }
+        else {
+            $SESSION->add_error_msg('Can\'t find Live consumer key and/or consumer secret.');
         }
     }
 
@@ -355,14 +360,17 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
                 CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
             );
             $result = mahara_http_request($config);
-            if ($result->info['http_code'] == 200 && !empty($result->data)) {
+            if (isset($result->data) && !empty($result->data) &&
+                isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
                 $data = json_decode(substr($result->data, $result->info['header_size']), true);
                 return $data;
-            } else {
-                $SESSION->add_error_msg(get_string('accesstokennotreturned', 'blocktype.cloud/microsoftdrive'));
             }
-        } else {
-            throw new ConfigException('Can\'t find Live Connect consumer ID and/or consumer secret.');
+            else {
+                $SESSION->add_error_msg(get_string('accesstokennotreturned', 'artefact.cloud'));
+            }
+        }
+        else {
+            $SESSION->add_error_msg('Can\'t find Live consumer key and/or consumer secret.');
         }
     }
 
@@ -407,7 +415,8 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
                     CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
                 );
                 $result = mahara_http_request($config);
-                if ($result->info['http_code'] == 200 && !empty($result->data)) {
+                if (isset($result->data) && !empty($result->data) &&
+                    isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
                     $prefs = json_decode(substr($result->data, $result->info['header_size']), true);
                     // These values are set only on user consent and are not sent anytime later
                     $prefs['refresh_token'] = $consumer->usrprefs['refresh_token'];
@@ -415,17 +424,20 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
 
                     ArtefactTypeCloud::set_user_preferences('microsoftdrive', $USER->get('id'), $prefs);
                     return $prefs['access_token'];
-                } else {
-                    $SESSION->add_error_msg(get_string('accesstokennotreturned', 'blocktype.cloud/microsoftdrive'));
-                    return null;
+                }
+                else {
+                    $httpstatus = get_http_status($result->info['http_code']);
+                    $SESSION->add_error_msg($httpstatus);
+                    log_warn($httpstatus);
                 }
             }
             // If access token is not expired, than return it...
             else {
                 return $consumer->usrprefs['access_token'];
             }
-        } else {
-            throw new ConfigException('Can\'t find Live Connect consumer ID and/or consumer secret.');
+        }
+        else {
+            $SESSION->add_error_msg('Can\'t find Live consumer key and/or consumer secret.');
         }
     }
 
@@ -436,6 +448,7 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
     
     // SEE: http://msdn.microsoft.com/en-us/library/dn659750.aspx
     public function revoke_access() {
+        global $SESSION;
         $consumer = self::get_service_consumer();
         if (!empty($consumer->key) && !empty($consumer->secret)) {
             $url = $consumer->authurl.'oauth20_logout.srf';
@@ -446,16 +459,30 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
             $query = oauth_http_build_query($params);
             $request_url = $url . ($query ? ('?' . $query) : '' );
             redirect($request_url);
-        } else {
-            throw new ConfigException('Can\'t find Live Connect consumer ID and/or consumer secret.');
+        }
+        else {
+            $SESSION->add_error_msg('Can\'t find Live consumer key and/or consumer secret.');
         }
     }
     
     // SEE: http://msdn.microsoft.com/en-us/library/dn659736.aspx
     // SEE: http://msdn.microsoft.com/en-us/library/dn659731.aspx (quota!)
     public function account_info() {
+        global $SESSION;
         $consumer = self::get_service_consumer();
         $token = self::check_access_token();
+
+        $info = new StdClass();
+        $info->service_name = 'microsoftdrive';
+        $info->service_auth = false;
+        $info->user_id      = null;
+        $info->user_name    = null;
+        $info->user_email   = null;
+        $info->user_profile = null;
+        $info->space_used   = null;
+        $info->space_amount = null;
+        $info->space_ratio  = null;
+
         if (!empty($consumer->key) && !empty($consumer->secret)) {
             $url = $consumer->apiurl.$consumer->version.'/me';
             $port = $consumer->ssl ? '443' : '80';
@@ -470,7 +497,8 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
                 CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
             );
             $result = mahara_http_request($config);
-            if ($result->info['http_code'] == 200 && !empty($result->data)) {
+            if (isset($result->data) && !empty($result->data) &&
+                isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
                 $data = json_decode($result->data, true);
                 // Get user's quota information...
                 $url2 = $consumer->apiurl.$consumer->version.'/me/skydrive/quota';
@@ -486,30 +514,25 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
                 $result2 = mahara_http_request($config2);
                 $quota = json_decode($result2->data, true);
                 $quota['used'] = $quota['quota'] - $quota['available'];
-                return array(
-                    'service_name' => 'microsoftdrive',
-                    'service_auth' => true,
-                    'user_id'      => $data['id'],
-                    'user_name'    => $data['name'],
-                    'user_profile' => $data['link'],
-                    'space_used'   => bytes_to_size1024(floatval($quota['used'])),
-                    'space_amount' => bytes_to_size1024(floatval($quota['quota'])),
-                    'space_ratio'  => number_format((floatval($quota['used'])/floatval($quota['quota']))*100, 2),
-                );
-            } else {
-                return array(
-                    'service_name' => 'microsoftdrive',
-                    'service_auth' => false,
-                    'user_id'      => null,
-                    'user_name'    => null,
-                    'user_profile' => null,
-                    'space_used'   => null,
-                    'space_amount' => null,
-                    'space_ratio'  => null,
-                );
+
+                $info->service_name = 'microsoftdrive';
+                $info->service_auth = true;
+                $info->user_id      = $data['id'];
+                $info->user_name    = $data['name'];
+                $info->user_profile = $data['link'];
+                $info->space_used   = bytes_to_size1024(floatval($quota['used']));
+                $info->space_amount = bytes_to_size1024(floatval($quota['quota']));
+                $info->space_ratio  = number_format((floatval($quota['used'])/floatval($quota['quota']))*100, 2);
+                return $info;
             }
-         } else {
-            throw new ConfigException('Can\'t find Live Connect consumer ID and/or consumer secret.');
+            else {
+                $httpstatus = get_http_status($result->info['http_code']);
+                $SESSION->add_error_msg($httpstatus);
+                log_warn($httpstatus);
+            }
+        }
+        else {
+            $SESSION->add_error_msg('Can\'t find Live consumer key and/or consumer secret.');
         }
     }
     
@@ -524,7 +547,7 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
      *
      */
     public function get_filelist($folder_id='0', $selected=array(), $owner=null) {
-        global $THEME;
+        global $SESSION;
 
         // Get folder contents...
         $consumer = self::get_service_consumer($owner);
@@ -547,7 +570,8 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
                 CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
             );
             $result = mahara_http_request($config);
-            if ($result->info['http_code'] == 200 && !empty($result->data)) {
+            if (isset($result->data) && !empty($result->data) &&
+                isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
                 $data = json_decode($result->data, true);
                 $output = array(
                     'folders' => array(),
@@ -558,26 +582,41 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
                         if (in_array($artefact['id'], $selected)) {
                             $id          = $artefact['id'];
                             $type        = $artefact['type'];
-                            $icontype    = ($artefact['type'] == 'folder' ? 'folder' : 'file');
-                            $icon        = $THEME->get_url('images/' . $icontype . '.png');
                             $title       = $artefact['name'];
                             $description = $artefact['description'];
                             $size        = bytes_to_size1024($artefact['size']);
                             $created     = ($artefact['created_time'] ? format_date(strtotime($artefact['created_time']), 'strftimedaydate') : null);
                             if ($type == 'folder') {
-                                $output['folders'][] = array('iconsrc' => $icon, 'id' => $id, 'type' => $type, 'title' => $title, 'description' => $description, 'size' => $size, 'ctime' => $created);
-                            } else {
-                                $output['files'][] = array('iconsrc' => $icon, 'id' => $id, 'type' => $type, 'title' => $title, 'description' => $description, 'size' => $size, 'ctime' => $created);
+                                $output['folders'][] = array(
+                                    'id' => $id,
+                                    'title' => $title,
+                                    'description' => $description, 
+                                    'artefacttype' => $type,
+                                    'size' => $size,
+                                    'ctime' => $created,
+                                );
+                            }
+                            else {
+                                $output['files'][] = array(
+                                    'id' => $id,
+                                    'title' => $title,
+                                    'description' => $description, 
+                                    'artefacttype' => $type,
+                                    'size' => $size,
+                                    'ctime' => $created,
+                                );
                             }
                         }
                     }
                 }                    
                 return $output;
-            } else {
+            }
+            else {
                 return array();
             }
-         } else {
-            throw new ConfigException('Can\'t find Live Connect consumer ID and/or consumer secret.');
+        }
+        else {
+            $SESSION->add_error_msg('Can\'t find Live consumer key and/or consumer secret.');
         }
     }
 
@@ -598,7 +637,7 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
      *
      */
     public function get_folder_content($folder_id=0, $options, $block=0) {
-        global $USER, $THEME;
+        global $SESSION;
         
         // Get selected artefacts (folders and/or files)
         if ($block > 0) {
@@ -621,11 +660,11 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
         $selectMultiple = (boolean) $options[5];
 
         // Get folder parent...
-		$parent_id = 0; // either 'root' folder itself or parent is 'root' folder
-		$folder = self::get_folder_info($folder_id);
-		if (!empty($folder['parent_id'])) {
-			$parent_id = $folder['parent_id'];
-		}
+        $parent_id = 0; // either 'root' folder itself or parent is 'root' folder
+        $folder = self::get_folder_info($folder_id);
+        if (!empty($folder['parent_id'])) {
+            $parent_id = $folder['parent_id'];
+        }
 
         // Get folder contents...
         $consumer = self::get_service_consumer();
@@ -648,7 +687,8 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
                 CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
             );
             $result = mahara_http_request($config);
-            if ($result->info['http_code'] == 200 && !empty($result->data)) {
+            if (isset($result->data) && !empty($result->data) &&
+                isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
                 $data = json_decode($result->data, true);
                 $output = array();
                 $count = 0;
@@ -656,19 +696,22 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
                 if ($parent_id != '0') {
                     $type        = 'parentfolder';
                     $foldername  = get_string('parentfolder', 'artefact.file');
-                    $title       = '<a class="changefolder" href="javascript:void(0)" id="' . $parent_id . '" title="' . get_string('gotofolder', 'artefact.file', $foldername) . '"><img src="' . get_config('wwwroot') . 'artefact/cloud/theme/raw/static/images/parentfolder.png"></a>';
-                    $output['aaData'][] = array('', $title, '', $type);
+                    $icon        = '<span class="icon-level-up icon icon-lg"></span>';
+                    $title       = '<a class="changefolder" href="javascript:void(0)" id="' . $parent_id . '" title="' . get_string('gotofolder', 'artefact.file', $foldername) . '">' . $foldername . '</a>';
+                    $output['data'][] = array($icon, $title, '', $type);
                 }
                 if (!empty($data['data'])) {
                     foreach($data['data'] as $artefact) {
                         $id           = $artefact['id'];
                         $type         = ($artefact['type'] == 'folder' ? 'folder' : 'file');
-                        $icon         = '<img src="' . $THEME->get_url('images/' . $type . '.png') . '">';
                         // Get artefactname by removing parent path from beginning...
                         $artefactname = $artefact['name'];
                         if ($artefact['type'] == 'folder') {
+                            $icon  = '<span class="icon-folder-open icon icon-lg"></span>';
                             $title    = '<a class="changefolder" href="javascript:void(0)" id="' . $id . '" title="' . get_string('gotofolder', 'artefact.file', $artefactname) . '">' . $artefactname . '</a>';
-                        } else {
+                        }
+                        else {
+                            $icon  = '<span class="icon-file icon icon-lg"></span>';
                             $title    = '<a class="filedetails" href="' . get_config('wwwroot') . 'artefact/cloud/blocktype/microsoftdrive/details.php?id=' . $id . '" title="' . get_string('filedetails', 'artefact.cloud', $artefactname) . '">' . $artefactname . '</a>';
                         }
                         $controls = '';
@@ -677,38 +720,38 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
                             if ($selectFolders) {
                                 $controls = '<input type="' . ($selectMultiple ? 'checkbox' : 'radio') . '" name="artefacts[]" id="artefacts[]" value="' . $id . '"' . $selected . '>';
                             }
-                        } else {
+                        }
+                        else {
                             if ($selectFiles && !$manageButtons) {
                                 $controls = '<input type="' . ($selectMultiple ? 'checkbox' : 'radio') . '" name="artefacts[]" id="artefacts[]" value="' . $id . '"' . $selected . '>';
-                            } elseif ($manageButtons) {
-                                $controls  = '<div class="btns3">';
-                                $controls .= '<a title="' . get_string('preview', 'artefact.cloud') . '" href="preview.php?id=' . $id . '" target="_blank"><img src="' . get_config('wwwroot') . 'artefact/cloud/theme/raw/static/images/btn_preview.png" alt="' . get_string('preview', 'artefact.cloud') . '"></a>';
-                                if ($artefact['type'] == 'file') {
-                                    $controls .= '<a title="' . get_string('save', 'artefact.cloud') . '" href="download.php?id=' . $id . '&save=1"><img src="' . get_config('wwwroot') . 'artefact/cloud/theme/raw/static/images/btn_save.png" alt="' . get_string('save', 'artefact.cloud') . '"></a>';
-                                    $controls .= '<a title="' . get_string('download', 'artefact.cloud') . '" href="download.php?id=' . $id . '"><img src="' . get_config('wwwroot') . 'artefact/cloud/theme/raw/static/images/btn_download.png" alt="' . get_string('download', 'artefact.cloud') . '"></a>';
-                                } else {
-                                    $controls .= '<img src="' . $THEME->get_url('images/private_bkgd.png') . '" width="64" height="24">';
-                                }
+                            }
+                            elseif ($manageButtons && $artefact['type'] == 'file') {
+                                $controls  = '<div class="btn-group">';
+                                $controls .= '<a class="btn btn-default btn-xs" title="' . get_string('save', 'artefact.cloud') . '" href="download.php?id=' . $id . '&save=1"><span class="icon icon-floppy-o icon-lg"></span></a>';
+                                $controls .= '<a class="btn btn-default btn-xs" title="' . get_string('download', 'artefact.cloud') . '" href="download.php?id=' . $id . '"><span class="icon icon-download icon-lg"></span></a>';
                                 $controls .= '</div>';
                             }
                         }
-                        $output['aaData'][] = array($icon, $title, $controls, $type);
+                        $output['data'][] = array($icon, $title, $controls, $type);
                         $count++;
                     }
                 }
-                $output['iTotalRecords'] = $count;
-                $output['iTotalDisplayRecords'] = $count;
+                $output['recordsTotal'] = $count;
+                $output['recordsFiltered'] = $count;
                 return json_encode($output);
-            } else {
+            }
+            else {
                 return array();
             }
-         } else {
-            throw new ConfigException('Can\'t find Live Connect consumer ID and/or consumer secret.');
+        }
+        else {
+            $SESSION->add_error_msg('Can\'t find Live consumer key and/or consumer secret.');
         }
     }
 
     // SEE: http://msdn.microsoft.com/en-us/library/dn659731.aspx#read_a_folder_s__properties
     public function get_folder_info($folder_id=0, $owner=null) {
+        global $SESSION;
         $consumer = self::get_service_consumer($owner);
         $token = self::check_access_token($owner);
         if (!empty($consumer->key) && !empty($consumer->secret)) {
@@ -729,29 +772,32 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
                 CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
             );
             $result = mahara_http_request($config);
-            if ($result->info['http_code'] == 200 && !empty($result->data)) {
+            if (isset($result->data) && !empty($result->data) &&
+                isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
                 $data = json_decode($result->data, true);
                 $info = array(
                     'id'          => $data['id'],
                     'parent_id'   => $data['parent_id'],
                     'name'        => $data['name'],
                     'shared'      => implode(', ', $data['shared_with']),
-                    'preview'     => $data['link'],
                     'description' => $data['description'],
                     'created'     => ($data['created_time'] ? format_date(strtotime($data['created_time']), 'strfdaymonthyearshort') : null),
                     'updated'     => ($data['updated_time'] ? format_date(strtotime($data['updated_time']), 'strfdaymonthyearshort') : null),
                 );
                 return $info;
-            } else {
+            }
+            else {
                 return null;
             }
-         } else {
-            throw new ConfigException('Can\'t find Live Connect consumer ID and/or consumer secret.');
+        }
+        else {
+            $SESSION->add_error_msg('Can\'t find Live consumer key and/or consumer secret.');
         }
     }
 
     // SEE: http://msdn.microsoft.com/en-us/library/dn659731.aspx#read_a_file_s_properties
     public function get_file_info($file_id=0, $owner=null) {
+        global $SESSION;
         $consumer = self::get_service_consumer($owner);
         $token = self::check_access_token($owner);
         if (!empty($consumer->key) && !empty($consumer->secret)) {
@@ -768,7 +814,8 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
                 CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
             );
             $result = mahara_http_request($config);
-            if ($result->info['http_code'] == 200 && !empty($result->data)) {
+            if (isset($result->data) && !empty($result->data) &&
+                isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
                 $data = json_decode($result->data, true);
                 $info = array(
                     'id'          => $data['id'],
@@ -778,24 +825,26 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
                     'bytes'       => $data['size'],
                     'size'        => bytes_to_size1024($data['size']),
                     'shared'      => implode(', ', $data['shared_with']), 
-                    'preview'     => $data['link'],
                     'description' => $data['description'],
                     'created'     => ($data['created_time'] ? format_date(strtotime($data['created_time']), 'strfdaymonthyearshort') : null),
                     'updated'     => ($data['updated_time'] ? format_date(strtotime($data['updated_time']), 'strfdaymonthyearshort') : null),
                     'parent'      => $data['parent_id'],
                 );
                 return $info;
-            } else {
+            }
+            else {
                 return null;
             }
-         } else {
-            throw new ConfigException('Can\'t find Live Connect consumer ID and/or consumer secret.');
+        }
+        else {
+            $SESSION->add_error_msg('Can\'t find Live consumer key and/or consumer secret.');
         }
     }
 
     // SEE: http://msdn.microsoft.com/en-us/library/dn659731.aspx
     // SEE: http://msdn.microsoft.com/en-us/library/dn659726.aspx#download_a_file
     public function download_file($file_id=0, $owner=null) {
+        global $SESSION;
         $consumer = self::get_service_consumer($owner);
         $token = self::check_access_token($owner);
         if (!empty($consumer->key) && !empty($consumer->secret)) {
@@ -820,13 +869,15 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
             $result = curl_exec($ch);
             curl_close($ch);
             return $result;
-        } else {
-            throw new ConfigException('Can\'t find Live Connect consumer ID and/or consumer secret.');
+        }
+        else {
+            $SESSION->add_error_msg('Can\'t find Live consumer key and/or consumer secret.');
         }
     }
 
     // SEE: http://msdn.microsoft.com/en-us/library/dn659731.aspx#get_links_to_files_and_folders
     public function embed_file($file_id=0, $options=array(), $owner=null) {
+        global $SESSION;
         $consumer = self::get_service_consumer($owner);
         $token = self::check_access_token($owner);
         if (!empty($consumer->key) && !empty($consumer->secret)) {
@@ -843,50 +894,23 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
                 CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
             );
             $result = mahara_http_request($config);
-            if ($result->info['http_code'] == 200 && !empty($result->data)) {
+            if (isset($result->data) && !empty($result->data) &&
+                isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
                 $data = json_decode($result->data, true);
                 if (isset($data['embed_html']) && !empty($data['embed_html'])) {
                     return $data['embed_html'];
-                } else {
+                }
+                else {
                     return null;
                 }
-            } else {
+            }
+            else {
                 return null;
             }
-         } else {
-            throw new ConfigException('Can\'t find Live Connect consumer ID and/or consumer secret.');
         }
-    }
-
-    // SEE: http://msdn.microsoft.com/en-us/library/dn659731.aspx#get_links_to_files_and_folders
-    public function public_url($file_id=0, $owner=null) {
-        $consumer = self::get_service_consumer($owner);
-        $token = self::check_access_token($owner);
-        if (!empty($consumer->key) && !empty($consumer->secret)) {
-            $url = $consumer->apiurl.$consumer->version.'/'.$file_id.'/shared_read_link';
-            $port = $consumer->ssl ? '443' : '80';
-            $params = array('access_token' => $token);
-            $config = array(
-                CURLOPT_URL => $url.'?'.oauth_http_build_query($params),
-                CURLOPT_PORT => $port,
-                CURLOPT_POST => false,
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_SSL_VERIFYHOST => 2,
-                CURLOPT_SSL_VERIFYPEER => true,
-                CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
-            );
-            $result = mahara_http_request($config);
-            if ($result->info['http_code'] == 200 && !empty($result->data)) {
-                $data = json_decode($result->data, true);
-                return $data['link'];
-            } else {
-                return null;
-            }
-         } else {
-            throw new ConfigException('Can\'t find Live Connect consumer ID and/or consumer secret.');
+        else {
+            $SESSION->add_error_msg('Can\'t find Live consumer key and/or consumer secret.');
         }
     }
 
 }
-
-?>

@@ -5,7 +5,7 @@
  * @subpackage blocktype-owncloud
  * @author     Gregor Anzelj
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2014 Gregor Anzelj, gregor.anzelj@gmail.com
+ * @copyright  (C) 2012-2016 Gregor Anzelj, info@povsod.com
  *
  */
 
@@ -26,17 +26,17 @@ if ($save) {
     // Save file to Mahara
     $saveform = pieform(array(
         'name'       => 'saveform',
-        'renderer'   => 'maharatable',
         'plugintype' => 'artefact',
         'pluginname' => 'cloud',
-        'configdirs' => array(get_config('libroot') . 'form/', get_config('docroot') . 'artefact/cloud/form/'),
+        'template'   => 'saveform.php',
+        'templatedir' => pieform_template_dir('saveform.php', 'artefact/cloud'),
         'elements'   => array(
             'fileid' => array(
                 'type'  => 'hidden',
                 'value' => $id,
             ),
             'folderid' => array(
-                'type'    => 'css_select',
+                'type'    => 'select',
                 'title'   => get_string('savetofolder', 'artefact.cloud'),
                 'options' => get_foldertree_options(),
                 //'size'    => 8,                
@@ -53,17 +53,18 @@ if ($save) {
     ));
     
     $smarty = smarty();
-    //$smarty->assign('SERVICE', 'owncloud');
     $smarty->assign('PAGEHEADING', get_string('savetomahara', 'artefact.cloud'));
-    $smarty->assign('saveform', $saveform);
-    $smarty->display('blocktype:owncloud:save.tpl');
-} else {
+    $smarty->assign('form', $saveform);
+    $smarty->display('form.tpl');
+}
+else {
     // Download file
     $ownerid = null;
     if ($viewid > 0) {
         $view = new View($viewid);
         $ownerid = $view->get('owner');
-    } else {
+    }
+    else {
         $ownerid = null;
     }
     $file = PluginBlocktypeOwncloud::get_file_info($id, $ownerid);
@@ -84,7 +85,8 @@ function saveform_submit(Pieform $form, $values) {
     $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
     if (in_array($extension, array('bmp', 'gif', 'jpg', 'jpeg', 'png'))) {
         $image = true;
-    } else {
+    }
+    else {
         $image = false;
     }
     
@@ -125,7 +127,7 @@ function saveform_submit(Pieform $form, $values) {
     insert_record('artefact_file_files', $fileartefact);
     
     // Write file content to local Mahara file repository
-    $content = PluginBlocktypeOwncloud::download_file($file['id']); 
+    $content = PluginBlocktypeOwncloud::download_file($file['id'], null, false); 
     if (!file_exists(get_config('dataroot') . 'artefact/file/originals/' . $artefactid)) {
         mkdir(get_config('dataroot') . 'artefact/file/originals/' . $artefactid, 0777);
     }
@@ -147,5 +149,3 @@ function saveform_submit(Pieform $form, $values) {
     // Redirect
     redirect(get_config('wwwroot') . 'artefact/cloud/blocktype/owncloud/manage.php');
 }
-
-?>

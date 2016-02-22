@@ -5,7 +5,7 @@
  * @subpackage blocktype-owncloud
  * @author     Gregor Anzelj
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2014 Gregor Anzelj, gregor.anzelj@gmail.com
+ * @copyright  (C) 2012-2016 Gregor Anzelj, info@povsod.com
  *
  */
 
@@ -20,6 +20,10 @@ define('TITLE', get_string('servicename', 'blocktype.cloud/owncloud'));
 require_once('lib.php');
 
 $action = param_alpha('action', 'info');
+$viewid = param_integer('view', 0);
+
+$sub = get_config_plugin('blocktype', 'owncloud', 'subservice');
+$subservice = (isset($sub) && !empty($sub) ? $sub : false);
 
 
 switch ($action) {
@@ -38,6 +42,10 @@ switch ($action) {
                     'type' => 'password',
                     'title' => get_string('password'),
                 ),
+                'viewid' => array(
+                    'type' => 'hidden',
+                    'value' => $viewid,
+                ),
                 'submitcancel' => array(
                     'type' => 'submitcancel',
                     'value' => array(get_string('allow', 'artefact.cloud'), get_string('deny', 'artefact.cloud')),
@@ -46,7 +54,8 @@ switch ($action) {
             ),
         ));
         $smarty = smarty();
-        $smarty->assign('service', 'owncloud');
+        $smarty->assign('SERVICE', 'owncloud');
+        $smarty->assign('SUBSERVICE', $subservice);
         $smarty->assign('sitename', get_config('sitename'));
         $smarty->assign('servicename', get_string('servicename', 'blocktype.cloud/owncloud'));
         $smarty->assign('instructions', get_string('AAIlogin', 'blocktype.cloud/owncloud', '<a href="'.$link.'" target="_blank">', '</a>'));
@@ -59,26 +68,20 @@ switch ($action) {
         redirect(get_config('wwwroot').'artefact/cloud');
         break;
     default:
-        $account = PluginBlocktypeOwncloud::account_info();
-        $smarty = smarty();
-        //$smarty->assign('PAGEHEADING', TITLE);
-        $smarty->assign('account', $account);
-        $webdavurl = get_config_plugin('blocktype', 'owncloud', 'webdavurl');
-        if (strpos($webdavurl, 'arnes') !== false) {
-            $arnes = true;
-        } else {
-            $arnes = false;
-        }
-        $smarty->assign('arnes', $arnes);
-        $smarty->display('artefact:cloud:account.tpl');
+        throw new ParameterException("Parameter for login to or logout from ownCloud is missing.");
+
 }
 
 function consent_submit(Pieform $form, $values) {
     global $USER;
     $token = base64_encode($values['username'].':'.$values['password']);
+    $viewid = $values['viewid'];
     ArtefactTypeCloud::set_user_preferences('owncloud', $USER->get('id'), array('token' => $token));
-    redirect(get_config('wwwroot') . 'artefact/cloud/');
+
+    if ($viewid > 0) {
+        redirect(get_config('wwwroot').'view/blocks.php?id='.$viewid);
+    }
+    else {
+        redirect(get_config('wwwroot') . 'artefact/cloud/');
+    }
 }
-
-
-?>

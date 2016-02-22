@@ -5,7 +5,7 @@
  * @subpackage blocktype-zotero
  * @author     Gregor Anzelj
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2014 Gregor Anzelj, gregor.anzelj@gmail.com
+ * @copyright  (C) 2012-2016 Gregor Anzelj, info@povsod.com
  *
  */
 
@@ -24,7 +24,7 @@ $format = param_variable('format', 'bibtex');
 $prefix = str_replace(' ', '_', $id);
 if ($type == 'tag') {
     $tag = $id;
-	$id = 0;
+    $id = 0;
 }
 else {
     $tag = null;
@@ -48,12 +48,10 @@ $citation = array(
 
 $filename = $prefix . '_' . $format . '.' . $citation[$format]['ext'];
 $content = PluginBlocktypeZotero::export_citation($id, $type, $format, $tag);
-	
+    
 header('Pragma: no-cache');
 header('Content-Disposition: attachment; filename="' . $filename . '"');
 header('Content-Transfer-Encoding: binary'); 
 header('Content-Type: ' . $citation[$format]['type']);
 echo $content;
 exit;
-
-?>

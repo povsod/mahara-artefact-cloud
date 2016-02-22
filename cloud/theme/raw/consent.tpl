@@ -1,32 +1,48 @@
 <html>
 <head>
-  <title>{str tag='servicename' section='blocktype.cloud/$service'} - Consent</title>
-  <link rel="shortcut icon" href="{$WWWROOT}artefact/cloud/blocktype/{$service}/theme/raw/static/images/favicon.ico" />
-  <style>
-  body { font-family:Arial,"Nimbus Sans L",Helvetica,sans-serif; font-size:0.75em; }
-  table, td, th, tr, thead, tbody, tfoot, colgroup, col { font-size:1em; text-align:right; }
-  th { padding-right:10px; }
-  .submit { font-weight:bold; }
-  </style>
+  <title>{str tag='servicename' section='blocktype.cloud/$SERVICE'} - Consent</title>
+  {if $SUBSERVICE}
+  <link rel="shortcut icon" href="{$WWWROOT}artefact/cloud/blocktype/{$SERVICE}/theme/raw/static/{$SUBSERVICE}/favicon.png" />
+  {else}
+  <link rel="shortcut icon" href="{$WWWROOT}artefact/cloud/blocktype/{$SERVICE}/theme/raw/static/images/favicon.png" />
+  {/if}
+  <link rel="stylesheet" type="text/css" href="{theme_url filename="style/style.css"}">
 </head>
 
-<body>
-<center>
-<div style="width:60%; text-align:left; padding:20px;">
-<img src="{$WWWROOT}artefact/cloud/blocktype/{$service}/theme/raw/static/images/service.png" border="0">
+<body style="background-color:#fff">
 
-<div style="padding:40px 25%">
-<h2>{str tag='consenttitle' section='artefact.cloud' arg1=$sitename arg2=$servicename}</h2>
-<p>{str tag='consentmessage' section='artefact.cloud'}</p>
-{if $instructions}<p>{$instructions|safe}</p>{/if}
-<center>
-<div style="background-color:#eee; padding:20px">
-{$form|safe}
+<div class="row">
+
+<div class="col-md-4" align="center">
+    {if $SUBSERVICE}
+    <img src="{$WWWROOT}artefact/cloud/blocktype/{$SERVICE}/theme/raw/static/{$SUBSERVICE}/service.png" border="0">
+    {else}
+    <img src="{$WWWROOT}artefact/cloud/blocktype/{$SERVICE}/theme/raw/static/images/service.png" border="0">
+    {/if}
 </div>
-</center>
+<div class="col-md-4 login-panel">
+    <div>
+        <h2>{str tag='consenttitle' section='artefact.cloud' arg1=$sitename arg2=$servicename}</h2>
+        <p align="justify">{str tag='consentmessage' section='artefact.cloud'}</p>
+        {if $instructions}<p align="justify">{$instructions|safe}</p>{/if}
+        <br />
+    </div>
+    <div class="panel panel-default">
+        <h3 class="panel-heading">
+            {str tag="login"}
+        </h3>
+        <div class="panel-body">
+            <noscript><p>{str tag="javascriptnotenabled"}</p></noscript>
+            {dynamic}{insert_messages placement='loginbox'}{/dynamic}
+            <div id="loginform_container">
+                {$form|safe}
+            </div>
+        </div>
+    </div>
 </div>
+<div class="col-md-4"></div>
 
 </div>
-</center>
+
 </body>
 </html>

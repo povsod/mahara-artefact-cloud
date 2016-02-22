@@ -1,11 +1,11 @@
-<?php
+﻿<?php
 /**
  *
  * @package    mahara
  * @subpackage blocktype-owncloud
  * @author     Gregor Anzelj
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2014 Gregor Anzelj, gregor.anzelj@gmail.com
+ * @copyright  (C) 2012-2016 Gregor Anzelj, info@povsod.com
  *
  */
 
@@ -36,17 +36,21 @@ class PluginBlocktypeOwncloud extends PluginBlocktypeCloud {
         $view = new View($viewid);
         $ownerid = $view->get('owner');
 
-        //$fullpath = (!empty($configdata['fullpath']) ? $configdata['fullpath'] : '/|@');
-        //list($folder, $path) = explode('|', $fullpath, 2);
         $selected = (!empty($configdata['artefacts']) ? $configdata['artefacts'] : array());
         
         $smarty = smarty_core();
-		$folder = 0; // TODO: Change!
+        $smarty->assign('SERVICE', 'owncloud');
+        if (!empty($selected)) {
+            $folder = dirname($selected[0]);
+        }
+        else {
+            $folder = '';
+        }
         $data = self::get_filelist($folder, $selected, $ownerid);
         $smarty->assign('folders', $data['folders']);
         $smarty->assign('files', $data['files']);
         $smarty->assign('viewid', $viewid);
-        return $smarty->fetch('blocktype:owncloud:list.tpl');
+        return $smarty->fetch('artefact:cloud:list.tpl');
     }
 
     public static function has_instance_config() {
@@ -63,17 +67,21 @@ class PluginBlocktypeOwncloud extends PluginBlocktypeCloud {
 
         $view = new View($viewid);
         $ownerid = $view->get('owner');
-        
-        $data = ArtefactTypeCloud::get_user_preferences('owncloud', $ownerid);
-        if ($data) {
+
+        $sub = get_config_plugin('blocktype', 'owncloud', 'subservice');
+        $subservice = (isset($sub) && !empty($sub) ? $sub : 'images');
+
+        $consumer = self::get_service_consumer();
+        if (isset($consumer->usrprefs['token']) && !empty($consumer->usrprefs['token'])) {
             return array(
                 'owncloudlogo' => array(
                     'type' => 'html',
-                    'value' => '<img src="' . get_config('wwwroot') . 'artefact/cloud/blocktype/owncloud/theme/raw/static/images/logo.png">',
+                    'value' => '<img src="' . get_config('wwwroot') . 'artefact/cloud/blocktype/owncloud/theme/raw/static/' . $subservice . '/logo.png">',
                 ),
                 'owncloudisconnect' => array(
                     'type' => 'cancel',
-                    'value' => get_string('revokeconnection', 'blocktype.cloud/owncloud'),
+                    'value' => get_string('revokeconnection', 'blocktype.cloud/owncloud') . ' • '
+                             . get_config_plugin('blocktype', 'owncloud', 'servicetitle'),
                     'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/owncloud/account.php?action=logout',
                 ),
                 'owncloudfiles' => array(
@@ -101,7 +109,7 @@ class PluginBlocktypeOwncloud extends PluginBlocktypeCloud {
                 'owncloudisconnect' => array(
                     'type' => 'cancel',
                     'value' => get_string('connecttoowncloud', 'blocktype.cloud/owncloud'),
-                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/owncloud/account.php?action=login',
+                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/owncloud/account.php?action=login&view=' . $viewid,
                 ),
             );
         }
@@ -136,10 +144,14 @@ class PluginBlocktypeOwncloud extends PluginBlocktypeCloud {
     }
 
     public static function get_config_options() {
-        $servicetitle = get_config_plugin('blocktype', 'owncloud', 'servicetitle'); //get_string('servicename', 'blocktype.cloud/owncloud');
+        $servicetitle = get_config_plugin('blocktype', 'owncloud', 'servicetitle');
+        $subservice = get_config_plugin('blocktype', 'owncloud', 'subservice');
         $elements = array();
         $elements['owncloudgeneral'] = array(
             'type' => 'fieldset',
+            'class' => 'last',
+            'collapsible' => true,
+            'collapsed' => false,
             'legend' => get_string('owncloudgeneral', 'blocktype.cloud/owncloud'),
             'elements' => array(
                 'servicetitle' => array(
@@ -148,17 +160,33 @@ class PluginBlocktypeOwncloud extends PluginBlocktypeCloud {
                     'defaultvalue' => (isset($servicetitle) ? $servicetitle : get_string('service', 'blocktype.cloud/owncloud')),
                     'description'  => get_string('servicetitledesc', 'blocktype.cloud/owncloud'),
                 ),
+                'subservice' => array(
+                    'type'         => 'select',
+                    'title'        => get_string('subservice', 'blocktype.cloud/owncloud'),
+                    'defaultvalue' => (isset($subservice) ? $subservice : '0'),
+                    'description'  => get_string('subservicedesc', 'blocktype.cloud/owncloud'),
+                    'options'      => array(
+                        '0'     => get_string('none'),
+                        'arnes' => get_string('subservice.arnes', 'blocktype.cloud/owncloud'),
+                    ),
+                ),
                 'webdavurl' => array(
                     'type'         => 'text',
                     'title'        => get_string('webdavurl', 'blocktype.cloud/owncloud'),
                     'defaultvalue' => get_config_plugin('blocktype', 'owncloud', 'webdavurl'),
                     'description'  => get_string('webdavurldesc', 'blocktype.cloud/owncloud'),
-                    'size' => 50,
-                    'rules' => array('required' => true),
+                    'rules'        => array('required' => true),
+                ),
+                'webdavproxy' => array(
+                    'type'         => 'text',
+                    'title'        => get_string('webdavproxy', 'blocktype.cloud/owncloud'),
+                    'defaultvalue' => get_config_plugin('blocktype', 'owncloud', 'webdavproxy'),
+                    'description'  => get_string('webdavproxydesc', 'blocktype.cloud/owncloud'),
                 ),
             )
         );
         return array(
+            'class' => 'panel panel-body',
             'elements' => $elements,
         );
 
@@ -169,7 +197,9 @@ class PluginBlocktypeOwncloud extends PluginBlocktypeCloud {
         // This is the only way to be sure it really exists!
         $webdavurl = rtrim($values['webdavurl'], '/') . '/';
         set_config_plugin('blocktype', 'owncloud', 'servicetitle', $values['servicetitle']);
+        set_config_plugin('blocktype', 'owncloud', 'subservice', $values['subservice']);
         set_config_plugin('blocktype', 'owncloud', 'webdavurl', $webdavurl);
+        set_config_plugin('blocktype', 'owncloud', 'webdavproxy', $values['webdavproxy']);
     }
 
     public static function default_copy_type() {
@@ -186,11 +216,12 @@ class PluginBlocktypeOwncloud extends PluginBlocktypeCloud {
             $owner = $USER->get('id');
         }
         $service = new StdClass();
-        $service->ssl        = true;
-        $service->version    = ''; // API Version
-        $service->title      = get_config_plugin('blocktype', 'owncloud', 'servicetitle');
-        $service->webdavurl  = get_config_plugin('blocktype', 'owncloud', 'webdavurl');
-        $service->usrprefs   = ArtefactTypeCloud::get_user_preferences('owncloud', $owner);
+        $service->ssl         = true;
+        $service->version     = ''; // API Version
+        $service->title       = get_config_plugin('blocktype', 'owncloud', 'servicetitle');
+        $service->webdavurl   = get_config_plugin('blocktype', 'owncloud', 'webdavurl');
+        $service->webdavproxy = get_config_plugin('blocktype', 'owncloud', 'webdavproxy');
+        $service->usrprefs    = ArtefactTypeCloud::get_user_preferences('owncloud', $owner);
         if (isset($service->usrprefs['token'])) {
             $service->usrprefs['token'] = base64_decode($service->usrprefs['token']);
         }
@@ -198,27 +229,33 @@ class PluginBlocktypeOwncloud extends PluginBlocktypeCloud {
     }
 
     public function service_list() {
+        global $SESSION;
         $consumer = self::get_service_consumer();
-        $webdavurl = parse_url($consumer->webdavurl);
-        if (isset($consumer->usrprefs['token']) && !empty($consumer->usrprefs['token'])) {
-            return array(
-                'service_name'    => 'owncloud',
-                'service_subname' => get_config_plugin('blocktype', 'owncloud', 'servicetitle'),
-                'service_url'     => $webdavurl['scheme'].'://'.$webdavurl['host'],
-                'service_auth'    => true,
-                'service_manage'  => true,
-                //'revoke_access'   => true,
-            );
-        } else {
-            return array(
-                'service_name'    => 'owncloud',
-                'service_subname' => null,
-                'service_url'     => $webdavurl['scheme'].'://'.$webdavurl['host'],
-                'service_auth'    => false,
-                'service_manage'  => false,
-                //'revoke_access'   => false,
-            );
+        $owncloud = get_config_plugin('blocktype', 'owncloud', 'servicetitle');
+        $service = new StdClass();
+        $service->name = 'owncloud';
+        $service->subname = (isset($owncloud) && !empty($owncloud) ? $owncloud : '');
+        // For customized service icons...
+        $service->subservice = get_config_plugin('blocktype', 'owncloud', 'subservice');
+        $service->url = '';
+        $service->auth = false;
+        $service->manage = false;
+        $service->pending = false;
+
+        if (!empty($consumer->webdavurl)) {
+            $webdavurl = parse_url($consumer->webdavurl);
+            $service->url = $webdavurl['scheme'].'://'.$webdavurl['host'];
+            if (isset($consumer->usrprefs['token']) && !empty($consumer->usrprefs['token'])) {
+                $service->auth = true;
+                $service->manage = true;
+                $service->account = self::account_info();
+            }
         }
+        else {
+            $service->pending = true;
+            $SESSION->add_error_msg('Can\'t access ownCloud via WebDAV. Incorrect user credentials.');
+        }
+        return $service;
     }
     
     public function request_token() {
@@ -240,11 +277,25 @@ class PluginBlocktypeOwncloud extends PluginBlocktypeCloud {
     }
     
     public function account_info() {
+        global $SESSION;
         $consumer = self::get_service_consumer();
-        $webdavurl = parse_url($consumer->webdavurl);
+
+        $info = new StdClass();
+        $info->service_name = 'owncloud';
+        $info->service_auth = false;
+        $info->user_id      = null;
+        $info->user_name    = null;
+        $info->user_email   = null;
+        $info->user_profile = null;
+        $info->space_used   = null;
+        $info->space_amount = null;
+        $info->space_ratio  = null;
+
         if (isset($consumer->usrprefs['token']) && !empty($consumer->usrprefs['token'])) {
             $url = $consumer->webdavurl;
             $port = $consumer->ssl ? '443' : '80';
+            $proxy = $consumer->webdavproxy;
+            $webdavurl = parse_url($consumer->webdavurl);
             $header = array();
             $header[] = 'User-Agent: ownCloud API PHP Client';
             $header[] = 'Host: ' . $webdavurl['host'];
@@ -252,6 +303,7 @@ class PluginBlocktypeOwncloud extends PluginBlocktypeCloud {
             $config = array(
                 CURLOPT_URL => $url,
                 CURLOPT_PORT => $port,
+                CURLOPT_PROXY => $proxy,
                 CURLOPT_HEADER => true,
                 CURLOPT_HTTPHEADER => $header,
                 CURLOPT_CUSTOMREQUEST => 'PROPFIND',
@@ -263,7 +315,8 @@ class PluginBlocktypeOwncloud extends PluginBlocktypeCloud {
                 CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
             );
             $result = mahara_http_request($config);
-            if ($result->info['http_code'] == 207 /* HTTP/1.1 207 Multi-Status */ && !empty($result->data)) {
+            if (isset($result->data) && !empty($result->data) &&
+                isset($result->info) && !empty($result->info) && $result->info['http_code'] == 207) { /* HTTP/1.1 207 Multi-Status */
                 $xml = simplexml_load_string(substr($result->data, $result->info['header_size']));
                 $namespaces = $xml->getNameSpaces(true);
                 $dav = $xml->children($namespaces['d']);
@@ -271,32 +324,25 @@ class PluginBlocktypeOwncloud extends PluginBlocktypeCloud {
                 $used  = (float) $dav->response[0]->propstat->prop->{'quota-used-bytes'};
                 $total = (float) $dav->response[0]->propstat->prop->{'quota-available-bytes'};
                 $user  = explode(':', $consumer->usrprefs['token']);
-                return array(
-                    'service_name' => 'owncloud',
-                    'service_auth' => true,
-                    'user_id'      => null,
-                    'user_name'    => $user[0],
-                    'user_email'   => null,
-                    'space_used'   => bytes_to_size1024($used),
-                    'space_amount' => bytes_to_size1024($total),
-                    'space_ratio'  => number_format(($used/$total)*100, 2),
-                );
-            } else {
-                return array(
-                    'service_name' => 'owncloud',
-                    'service_auth' => false,
-                    'user_id'      => null,
-                    'user_name'    => null,
-                    'user_email'   => null,
-                    'space_used'   => null,
-                    'space_amount' => null,
-                    'space_ratio'  => null,
-                );
+
+                $info->service_name = 'owncloud';
+                $info->service_auth = true;
+                $info->user_name    = $user[0];
+                $info->space_used   = bytes_to_size1024($used);
+                $info->space_amount = bytes_to_size1024($total);
+                $info->space_ratio  = number_format(($used/$total)*100, 2);
+                return $info;
+            }
+            else {
+                $httpstatus = get_http_status($result->info['http_code']);
+                $SESSION->add_error_msg($httpstatus);
+                log_warn($httpstatus);
             }
         }
         else {
-            throw new ConfigException('Can\'t access ownCloud via WebDAV. Incorrect user credentials.');
+            $SESSION->add_error_msg('Can\'t access ownCloud via WebDAV. Incorrect user credentials.');
         }
+        return $info;
     }
     
     
@@ -306,15 +352,23 @@ class PluginBlocktypeOwncloud extends PluginBlocktypeCloud {
      * $folder_id   integer   ID of the folder (on Cloud Service), which contents we wish to retrieve
      * $output      array     Function returns array, used to generate list of files/folders to show in Mahara view/page
      */
-    public function get_filelist($folder_id='/', $selected=array(), $owner=null) {
-        global $THEME;
+    public function get_filelist($folder_id='/remote.php/webdav/', $selected=array(), $owner=null) {
+        global $SESSION;
+
+        // $folder_id equals to empty string if no file is
+        // selected, so return ownCloud default root folder ...
+        if ($folder_id == '') {
+            $folder_id = '/remote.php/webdav/';
+        }
 
         // Get folder contents...
         $consumer = self::get_service_consumer($owner);
-        $webdavurl = parse_url($consumer->webdavurl);
         if (isset($consumer->usrprefs['token']) && !empty($consumer->usrprefs['token'])) {
-            $url = $consumer->webdavurl.ltrim($folder_id, '/');
+            $webdavurl = parse_url($consumer->webdavurl);
+            $url = $webdavurl['scheme'].'://'.$webdavurl['host'];
+            $url .= implode('/', array_map('rawurlencode', explode('/', $folder_id)));
             $port = $consumer->ssl ? '443' : '80';
+            $proxy = $consumer->webdavproxy;
             $header = array();
             $header[] = 'User-Agent: ownCloud API PHP Client';
             $header[] = 'Host: ' . $webdavurl['host'];
@@ -322,6 +376,7 @@ class PluginBlocktypeOwncloud extends PluginBlocktypeCloud {
             $config = array(
                 CURLOPT_URL => $url,
                 CURLOPT_PORT => $port,
+                CURLOPT_PROXY => $proxy,
                 CURLOPT_HEADER => true,
                 CURLOPT_HTTPHEADER => $header,
                 CURLOPT_CUSTOMREQUEST => 'PROPFIND',
@@ -333,8 +388,8 @@ class PluginBlocktypeOwncloud extends PluginBlocktypeCloud {
                 CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
             );
             $result = mahara_http_request($config);
-			//log_debug($result);
-            if ($result->info['http_code'] == 207 /* HTTP/1.1 207 Multi-Status */ && !empty($result->data)) {
+            if (isset($result->data) && !empty($result->data) &&
+                isset($result->info) && !empty($result->info) && $result->info['http_code'] == 207) { /* HTTP/1.1 207 Multi-Status */
                 $xml = simplexml_load_string(substr($result->data, $result->info['header_size']));
                 $namespaces = $xml->getNameSpaces(true);
                 $dav = $xml->children($namespaces['d']);
@@ -353,32 +408,46 @@ class PluginBlocktypeOwncloud extends PluginBlocktypeCloud {
                             $prefix = $filepath;
                             continue;
                         }
-                        $filepath = str_replace($webdavurl['path'], '', rtrim($filepath, '/'));
                         // In ownCloud WebDAV id basically means path...
-                        $id = $filepath;
+                        $id = urldecode($filepath);
                         if (in_array($id, $selected)) {
                             $type         = (isset($artefact->propstat->prop->getcontenttype) ? 'file' : 'folder');
-                            $icon         = '<img src="' . $THEME->get_url('images/' . $type . '.png') . '">';
                             $artefactname = basename($filepath);
                             $title        = urldecode($artefactname);
                             $description  = '';
                             $size         = bytes_to_size1024((float) $artefact->propstat->prop->getcontentlength);
                             $created      = format_date(strtotime((string) $artefact->propstat->prop->getlastmodified), 'strftimedaydate');
                             if ($type == 'folder') {
-                                $output['folders'][] = array('iconsrc' => $icon, 'id' => $id, 'title' => $title, 'description' => $description, 'size' => $size, 'ctime' => $created);
+                                $output['folders'][] = array(
+                                    'id' => $id,
+                                    'title' => $title,
+                                    'description' => $description,
+                                    'size' => $size,
+                                    'ctime' => $created,
+                                );
                             }
-                            else
-                            {
-                                $output['files'][] = array('iconsrc' => $icon, 'id' => $id, 'title' => $title, 'description' => $description, 'size' => $size, 'ctime' => $created);
+                            else {
+                                $output['files'][] = array(
+                                    'id' => $id,
+                                    'title' => $title,
+                                    'description' => $description,
+                                    'size' => $size,
+                                    'ctime' => $created,
+                                );
                             }
                         }
                     }
                 }
                 return $output;
             }
+            else {
+                $httpstatus = get_http_status($result->info['http_code']);
+                $SESSION->add_error_msg($httpstatus);
+                log_warn($httpstatus);
+            }
         }
         else {
-            throw new ConfigException('Can\'t access ownCloud via WebDAV. Incorrect user credentials.');
+            $SESSION->add_error_msg('Can\'t access ownCloud via WebDAV. Incorrect user credentials.');
         }
     }
 
@@ -395,14 +464,14 @@ class PluginBlocktypeOwncloud extends PluginBlocktypeCloud {
      * PLEASE NOTE: For jQuery Datatable to work, the $output array must be properly formatted and JSON encoded.
      *              Please see: http://datatables.net/usage/server-side (Reply from the server)!
      */
-    public function get_folder_content($folder_id='/', $options, $block=0) {
-        global $THEME;
+    public function get_folder_content($folder_id='/remote.php/webdav/', $options, $block=0) {
+        global $SESSION;
         
-		// $folder_id is globally set to '0', set it to '/'
-		// as it is the Dropbox default root folder ...
-		if ($folder_id == '0') {
-			$folder_id = '/';
-		}
+        // $folder_id is globally set to '0', set it to '/'
+        // as it is the ownCloud default root folder ...
+        if ($folder_id == '0') {
+            $folder_id = '/remote.php/webdav/';
+        }
 
         // Get selected artefacts (folders and/or files)
         if ($block > 0) {
@@ -426,61 +495,15 @@ class PluginBlocktypeOwncloud extends PluginBlocktypeCloud {
         $selectFiles    = (boolean) $options[4];
         $selectMultiple = (boolean) $options[5];
 
-        /*
-		// Set/get return path...
-        if ($folder_id == 'init') {
-            if (strlen($fullpath) > 3) {
-                list($current, $path) = explode('|', $fullpath, 2);
-                $_SESSION[self::servicepath] = $current . '|' . $path;
-                $folder_id = $current;
-            } else {
-                // Full path equals path to root folder
-                $_SESSION[self::servicepath] = '/|@';
-                $folder_id = '/';
-            }
-        } else {
-            if ($folder_id != 'parent') {
-                // Go to child folder...
-                if (strlen($folder_id) > 1) {
-                    list($current, $path) = explode('|', $_SESSION[self::servicepath], 2);
-                    if ($current != $folder_id) {
-                        $_SESSION[self::servicepath] = $folder_id . '|' . $_SESSION[self::servicepath];
-                    }
-                }
-                // Go to root folder...
-                else {
-                    $_SESSION[self::servicepath] = '/|@';
-                }
-            } else {
-                // Go to parent folder...
-                if (strlen($_SESSION[self::servicepath]) > 3) {
-                    list($current, $parent, $path) = explode('|', $_SESSION[self::servicepath], 3);
-                    $_SESSION[self::servicepath] = $parent . '|' . $path;
-                    $folder_id = $parent;
-                }
-            }
-        }
-
-        list($parent_id, $path) = explode('|', $_SESSION[self::servicepath], 2);
-		*/
-        
-        
-         // Get folder parent...
-		$parent_id = '/remote.php/webdav/'; // either 'root' folder itself or parent is 'root' folder
-		log_debug($folder_id);
-		$folder = self::get_folder_info($folder_id);
-		log_debug($folder);
-		log_debug('==========');
-		if (!empty($folder['parent_id'])) {
-			$parent_id = $folder['parent_id'];
-		}
-
        // Get folder contents...
         $consumer = self::get_service_consumer();
-        $webdavurl = parse_url($consumer->webdavurl);
         if (isset($consumer->usrprefs['token']) && !empty($consumer->usrprefs['token'])) {
-            $url = $consumer->webdavurl.ltrim($folder_id, '/');
+            $webdavurl = parse_url($consumer->webdavurl);
+            $url = $webdavurl['scheme'].'://'.$webdavurl['host'];
+            $url .= implode('/', array_map('rawurlencode', explode('/', $folder_id)));
             $port = $consumer->ssl ? '443' : '80';
+            $proxy = $consumer->webdavproxy;
+            $webdavurl = parse_url($consumer->webdavurl);
             $header = array();
             $header[] = 'User-Agent: ownCloud API PHP Client';
             $header[] = 'Host: ' . $webdavurl['host'];
@@ -488,6 +511,7 @@ class PluginBlocktypeOwncloud extends PluginBlocktypeCloud {
             $config = array(
                 CURLOPT_URL => $url,
                 CURLOPT_PORT => $port,
+                CURLOPT_PROXY => $proxy,
                 CURLOPT_HEADER => true,
                 CURLOPT_HTTPHEADER => $header,
                 CURLOPT_CUSTOMREQUEST => 'PROPFIND',
@@ -499,24 +523,25 @@ class PluginBlocktypeOwncloud extends PluginBlocktypeCloud {
                 CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
             );
             $result = mahara_http_request($config);
-			//log_debug($result);
-            if ($result->info['http_code'] == 207 /* HTTP/1.1 207 Multi-Status */ && !empty($result->data)) {
+            if (isset($result->data) && !empty($result->data) &&
+                isset($result->info) && !empty($result->info) && $result->info['http_code'] == 207) { /* HTTP/1.1 207 Multi-Status */
                 $xml = simplexml_load_string(substr($result->data, $result->info['header_size']));
                 $namespaces = $xml->getNameSpaces(true);
                 $dav = $xml->children($namespaces['d']);
-				//log_debug($dav);
                 $output = array();
                 $count = 0;
                 // Add 'parent' row entry to jQuery Datatable...
                 if (strlen($folder_id) > strlen('/remote.php/webdav/')) {
+                    $parentpath  = dirname($folder_id);
                     $type        = 'parentfolder';
                     $foldername  = get_string('parentfolder', 'artefact.file');
-                    $title       = '<a class="changefolder" href="javascript:void(0)" id="parent" title="' . get_string('gotofolder', 'artefact.file', $foldername) . '"><img src="' . $THEME->get_url('images/parentfolder.png') . '"></a>';
-                    $output['aaData'][] = array('', $title, '', $type);
+                    $icon        = '<span class="icon-level-up icon icon-lg"></span>';
+                    $title       = '<a class="changefolder" href="javascript:void(0)" id="' . $parentpath . '" title="' . get_string('gotofolder', 'artefact.file', $foldername) . '">' . $foldername . '</a>';
+                    $output['data'][] = array($icon, $title, '', $type);
                 }
                 $isFirst = true;
                 if (!empty($dav->response)) {
-                    foreach($dav->response as $artefact) {
+                    $detailspath = get_config('wwwroot') . 'artefact/cloud/blocktype/owncloud/details.php';         foreach($dav->response as $artefact) {
                         $filepath = (string) $artefact->href;
                         // First entry in $dav->response holds general information
                         // about selected folder...
@@ -525,18 +550,19 @@ class PluginBlocktypeOwncloud extends PluginBlocktypeCloud {
                             $prefix = $filepath;
                             continue;
                         }
-                        $filepath = str_replace($webdavurl['path'], '', rtrim($filepath, '/'));
                         // In ownCloud WebDAV id basically means path...
-                        $id           = rawurlencode($filepath);
+                        $id           = $filepath;
                         $type         = (isset($artefact->propstat->prop->getcontenttype) ? 'file' : 'folder');
-                        $icon         = '<img src="' . $THEME->get_url('images/' . $type . '.png') . '">';
                         // Get artefactname by removing parent path from beginning...
                         $artefactname = basename($filepath);
-						$title        = urldecode($artefactname);
+                        $title        = urldecode($artefactname);
                         if ($type == 'folder') {
+                            $icon  = '<span class="icon-folder-open icon icon-lg"></span>';
                             $title    = '<a class="changefolder" href="javascript:void(0)" id="' . $id . '" title="' . get_string('gotofolder', 'artefact.file', $title) . '">' . $title . '</a>';
-                        } else {
-                            $title    = '<a class="filedetails" href="details.php?id=' . $id . '" title="' . get_string('filedetails', 'artefact.cloud', $title) . '">' . $title . '</a>';
+                        }
+                        else {
+                            $icon  = '<span class="icon-file icon icon-lg"></span>';
+                            $title    = '<a class="filedetails" href="' . $detailspath . '?id=' . $id . '" title="' . get_string('filedetails', 'artefact.cloud', $title) . '">' . $title . '</a>';
                         }
                         $controls = '';
                         $selected = (in_array(urldecode($id), $artefacts) ? ' checked' : '');
@@ -544,40 +570,48 @@ class PluginBlocktypeOwncloud extends PluginBlocktypeCloud {
                             if ($selectFolders) {
                                 $controls = '<input type="' . ($selectMultiple ? 'checkbox' : 'radio') . '" name="artefacts[]" id="artefacts[]" value="' . $id . '"' . $selected . '>';
                             }
-                        } else {
+                        }
+                        else {
                             if ($selectFiles && !$manageButtons) {
                                 $controls = '<input type="' . ($selectMultiple ? 'checkbox' : 'radio') . '" name="artefacts[]" id="artefacts[]" value="' . $id . '"' . $selected . '>';
-                            } elseif ($manageButtons) {
-                                $controls  = '<div class="btns2">';
-                                $controls .= '<a title="' . get_string('save', 'artefact.cloud') . '" href="download.php?id=' . $id . '&save=1"><img src="' . get_config('wwwroot') . 'artefact/cloud/theme/raw/static/images/btn_save.png" alt="' . get_string('save', 'artefact.cloud') . '"></a>';
-                                $controls .= '<a title="' . get_string('download', 'artefact.cloud') . '" href="download.php?id=' . $id . '"><img src="' . get_config('wwwroot') . 'artefact/cloud/theme/raw/static/images/btn_download.png" alt="' . get_string('download', 'artefact.cloud') . '"></a>';
+                            }
+                            elseif ($manageButtons) {
+                                $controls  = '<div class="btn-group">';
+                                $controls .= '<a class="btn btn-default btn-xs" title="' . get_string('save', 'artefact.cloud') . '" href="download.php?id=' . $id . '&save=1"><span class="icon icon-floppy-o icon-lg"></span></a>';
+                                $controls .= '<a class="btn btn-default btn-xs" title="' . get_string('download', 'artefact.cloud') . '" href="download.php?id=' . $id . '"><span class="icon icon-download icon-lg"></span></a>';
                                 $controls .= '</div>';
                             }
                         }
-                        $output['aaData'][] = array($icon, $title, $controls, $type);
+                        $output['data'][] = array($icon, $title, $controls, $type);
                         $count++;
                     }
                 }
-                $output['iTotalRecords'] = $count;
-                $output['iTotalDisplayRecords'] = $count;
+                $output['recordsTotal'] = $count;
+                $output['recordsFiltered'] = $count;
                 return json_encode($output);
             }
             else {
-                return array();
+                $httpstatus = get_http_status($result->info['http_code']);
+                $SESSION->add_error_msg($httpstatus);
+                log_warn($httpstatus);
             }
         }
         else {
-            throw new ConfigException('Can\'t access ownCloud via WebDAV. Incorrect user credentials.');
+            $SESSION->add_error_msg('Can\'t access ownCloud via WebDAV. Incorrect user credentials.');
         }
     }
 
-    public function get_folder_info($folder_id='/', $owner=null) {
+    public function get_folder_info($folder_id='/remote.php/webdav/', $owner=null) {
         global $SESSION;
+        // Fix: everything except / gets urlencoded
+        $folder_id = implode('/', array_map('rawurlencode', explode('/', $folder_id)));
         $consumer = self::get_service_consumer($owner);
-        $webdavurl = parse_url($consumer->webdavurl);
         if (isset($consumer->usrprefs['token']) && !empty($consumer->usrprefs['token'])) {
-            $url = $consumer->webdavurl.ltrim($folder_id, '/');
+            $webdavurl = parse_url($consumer->webdavurl);
+            $url = $webdavurl['scheme'].'://'.$webdavurl['host'].$folder_id;
             $port = $consumer->ssl ? '443' : '80';
+            $proxy = $consumer->webdavproxy;
+            $webdavurl = parse_url($consumer->webdavurl);
             $header = array();
             $header[] = 'User-Agent: ownCloud API PHP Client';
             $header[] = 'Host: ' . $webdavurl['host'];
@@ -585,6 +619,7 @@ class PluginBlocktypeOwncloud extends PluginBlocktypeCloud {
             $config = array(
                 CURLOPT_URL => $url,
                 CURLOPT_PORT => $port,
+                CURLOPT_PROXY => $proxy,
                 CURLOPT_HEADER => true,
                 CURLOPT_HTTPHEADER => $header,
                 CURLOPT_CUSTOMREQUEST => 'PROPFIND',
@@ -596,40 +631,46 @@ class PluginBlocktypeOwncloud extends PluginBlocktypeCloud {
                 CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
             );
             $result = mahara_http_request($config);
-            if ($result->info['http_code'] == 207 /* HTTP/1.1 207 Multi-Status */ && !empty($result->data)) {
+            if (isset($result->data) && !empty($result->data) &&
+                isset($result->info) && !empty($result->info) && $result->info['http_code'] == 207) { /* HTTP/1.1 207 Multi-Status */
                 $xml = simplexml_load_string(substr($result->data, $result->info['header_size']));
                 $namespaces = $xml->getNameSpaces(true);
                 $dav = $xml->children($namespaces['d']);
                 // Get info about artefact (folder)
                 $artefact = $dav->response;
                 $filepath = (string) $artefact->href;
-                //$filepath = str_replace($webdavurl['path'], '', rtrim($filepath, '/'));
-
+ 
                 $info = array(
                     'id'          => $filepath,
-					'parent_id'   => dirname($filepath) . '/',
-                    'name'        => urldecode(basename($filepath)),
+                    'parent_id'   => dirname($filepath) . '/',
+                    'name'        => basename($filepath),
                     'description' => '', // ownCloud doesn't support file/folder descriptions...
                     'updated'     => format_date(strtotime((string) $artefact->propstat->prop->getlastmodified), 'strfdaymonthyearshort'),
                 );
                 return $info;
             }
             else {
-                $SESSION->add_error_msg(get_string('httprequestcode', '', $result->info['http_code']));
+                $httpstatus = get_http_status($result->info['http_code']);
+                $SESSION->add_error_msg($httpstatus);
+                log_warn($httpstatus);
             }
         }
         else {
-            throw new ConfigException('Can\'t access ownCloud via WebDAV. Incorrect user credentials.');
+            $SESSION->add_error_msg('Can\'t access ownCloud via WebDAV. Incorrect user credentials.');
         }
     }
 
-    public function get_file_info($file_id='/', $owner=null) {
+    public function get_file_info($file_id='/remote.php/webdav/', $owner=null) {
         global $SESSION;
+        // Fix: everything except / gets urlencoded
+        $file_id = implode('/', array_map('rawurlencode', explode('/', $file_id)));
         $consumer = self::get_service_consumer($owner);
-        $webdavurl = parse_url($consumer->webdavurl);
         if (isset($consumer->usrprefs['token']) && !empty($consumer->usrprefs['token'])) {
-            $url = $consumer->webdavurl.ltrim($file_id, '/');
+            $webdavurl = parse_url($consumer->webdavurl);
+            $url = $webdavurl['scheme'].'://'.$webdavurl['host'].$file_id;
             $port = $consumer->ssl ? '443' : '80';
+            $proxy = $consumer->webdavproxy;
+            $webdavurl = parse_url($consumer->webdavurl);
             $header = array();
             $header[] = 'User-Agent: ownCloud API PHP Client';
             $header[] = 'Host: ' . $webdavurl['host'];
@@ -637,6 +678,7 @@ class PluginBlocktypeOwncloud extends PluginBlocktypeCloud {
             $config = array(
                 CURLOPT_URL => $url,
                 CURLOPT_PORT => $port,
+                CURLOPT_PROXY => $proxy,
                 CURLOPT_HEADER => true,
                 CURLOPT_HTTPHEADER => $header,
                 CURLOPT_CUSTOMREQUEST => 'PROPFIND',
@@ -648,19 +690,19 @@ class PluginBlocktypeOwncloud extends PluginBlocktypeCloud {
                 CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
             );
             $result = mahara_http_request($config);
-            if ($result->info['http_code'] == 207 /* HTTP/1.1 207 Multi-Status */ && !empty($result->data)) {
+            if (isset($result->data) && !empty($result->data) &&
+                isset($result->info) && !empty($result->info) && $result->info['http_code'] == 207) { /* HTTP/1.1 207 Multi-Status */
                 $xml = simplexml_load_string(substr($result->data, $result->info['header_size']));
                 $namespaces = $xml->getNameSpaces(true);
                 $dav = $xml->children($namespaces['d']);
                 // Get info about artefact (file)
                 $artefact = $dav->response;
                 $filepath = (string) $artefact->href;
-                //$filepath = str_replace($webdavurl['path'], '', rtrim($filepath, '/'));
                 $filesize = (float) $artefact->propstat->prop->getcontentlength;
 
                 $info = array(
                     'id'          => $filepath,
-					'parent_id'   => dirname($filepath) . '/',
+                    'parent_id'   => dirname($filepath) . '/',
                     'name'        => urldecode(basename($filepath)),
                     'bytes'       => $filesize,
                     'size'        => bytes_to_size1024($filesize), 
@@ -671,20 +713,29 @@ class PluginBlocktypeOwncloud extends PluginBlocktypeCloud {
                 return $info;
             }
             else {
-                $SESSION->add_error_msg(get_string('httprequestcode', '', $result->info['http_code']));
+                $httpstatus = get_http_status($result->info['http_code']);
+                $SESSION->add_error_msg($httpstatus);
+                log_warn($httpstatus);
             }
         }
         else {
-            throw new ConfigException('Can\'t access ownCloud via WebDAV. Incorrect user credentials.');
+            $SESSION->add_error_msg('Can\'t access ownCloud via WebDAV. Incorrect user credentials.');
         }
     }
 
-    public function download_file($file_id='/', $owner=null) {
+    public function download_file($file_id='/remote.php/webdav/', $owner=null, $fix=true) {
+        global $SESSION;
+        if ($fix) {
+            // Fix: everything except / gets urlencoded
+            $file_id = implode('/', array_map('rawurlencode', explode('/', $file_id)));
+        }
         $consumer = self::get_service_consumer($owner);
-        $webdavurl = parse_url($consumer->webdavurl);
         if (isset($consumer->usrprefs['token']) && !empty($consumer->usrprefs['token'])) {
-            $download_url = $consumer->webdavurl.ltrim($file_id, '/');
+            $webdavurl = parse_url($consumer->webdavurl);
+            $download_url = $webdavurl['scheme'].'://'.$webdavurl['host'].$file_id;
             $port = $consumer->ssl ? '443' : '80';
+            $proxy = $consumer->webdavproxy;
+            $webdavurl = parse_url($consumer->webdavurl);
             $header = array();
             $header[] = 'User-Agent: ownCloud API PHP Client';
             $header[] = 'Host: ' . $webdavurl['host'];
@@ -695,6 +746,7 @@ class PluginBlocktypeOwncloud extends PluginBlocktypeCloud {
             curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
             curl_setopt($ch, CURLOPT_PORT, $port);
+            curl_setopt($ch, CURLOPT_PROXY, $proxy);
             curl_setopt($ch, CURLOPT_POST, false);
             curl_setopt($ch, CURLOPT_HTTPHEADER, $header);
             curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
@@ -704,15 +756,13 @@ class PluginBlocktypeOwncloud extends PluginBlocktypeCloud {
             return $result;
         }
         else {
-            throw new ConfigException('Can\'t access ownCloud via WebDAV. Incorrect user credentials.');
+            $SESSION->add_error_msg('Can\'t access ownCloud via WebDAV. Incorrect user credentials.');
         }
     }
 
-    public function embed_file($file_id='/', $options=array(), $owner=null) {
+    public function embed_file($file_id='/remote.php/webdav/', $options=array(), $owner=null) {
         // ownCloud doesn't support embedding of files, so:
         // Nothing to do!
     }
 
 }
-
-?>

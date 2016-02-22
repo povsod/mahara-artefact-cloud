@@ -5,7 +5,7 @@
  * @subpackage blocktype-picasa
  * @author     Gregor Anzelj
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2012-2015 Gregor Anzelj, gregor.anzelj@gmail.com
+ * @copyright  (C) 2012-2016 Gregor Anzelj, info@povsod.com
  *
  */
 
@@ -43,14 +43,21 @@ if ($viewid > 0) {
 }
 
 
-$smarty = smarty();
+$smarty = smarty(
+    array(),
+    array(),
+    array(),
+    array('sidebars' => false)
+);
 
+$smarty->assign('SERVICE', 'picasa');
 $smarty->assign('id', $id);
 $smarty->assign('type', $type);
 $smarty->assign('viewid', $viewid);
 if ($viewid > 0) {
     $viewtitle = $view->get('title');
-} else {
+}
+else {
     $viewtitle = get_string('filedetails', 'artefact.cloud', $data['name']);
 }
 $smarty->assign('viewtitle', $viewtitle);
@@ -64,6 +71,4 @@ if ($viewid > 0) {
     $smarty->assign('ownername', $view->formatted_owner());
 }
 
-$smarty->display('blocktype:picasa:details.tpl');
-
-?>
+$smarty->display('artefact:cloud:details.tpl');

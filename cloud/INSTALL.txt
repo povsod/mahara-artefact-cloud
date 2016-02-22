@@ -1,0 +1,13 @@
+For this plugin to work correctly (work at all) you need to edit htdocs/view/blocks.php core Mahara file.
+
+You have to add a string to javascript array around line 152
+(look for $javascript = array_merge($javascript, $blocktype_js['jsfiles']);),
+so it looks like this:
+
+$javascript = array_merge($javascript, $blocktype_js['jsfiles']);
+
+if (class_exists('PluginArtefactCloud')) {
+    $blocktype_cloud_js = array('artefact/cloud/lib/datatables/js/jquery.dataTables.min.js',
+                                'artefact/cloud/lib/datatables/js/dataTables.bootstrap.min.js');
+    $javascript = array_merge($javascript, $blocktype_cloud_js);
+}

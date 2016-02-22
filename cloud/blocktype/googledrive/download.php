@@ -5,7 +5,7 @@
  * @subpackage blocktype-googledrive
  * @author     Gregor Anzelj
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2012-2015 Gregor Anzelj, gregor.anzelj@gmail.com
+ * @copyright  (C) 2012-2016 Gregor Anzelj, info@povsod.com
  *
  */
 
@@ -20,31 +20,21 @@ $id   = param_variable('id', 0); // Possible values: numerical (= folder id), 0 
 $save = param_integer('save', 0); // Indicate to download file or save it (save=1) to local Mahara file repository...
 $viewid = param_integer('view', null);
 
-$owner = null;
-if ($viewid > 0) {
-    $view = new View($viewid);
-    $owner = $view->get('owner');
-    if (!can_view_view($viewid)) {
-        throw new AccessDeniedException();
-    }
-}
-
-
 if ($save) {
     // Save file to Mahara
     $saveform = pieform(array(
         'name'       => 'saveform',
-        'renderer'   => 'maharatable',
         'plugintype' => 'artefact',
         'pluginname' => 'cloud',
-        'configdirs' => array(get_config('libroot') . 'form/', get_config('docroot') . 'artefact/cloud/form/'),
+        'template'   => 'saveform.php',
+        'templatedir' => pieform_template_dir('saveform.php', 'artefact/cloud'),
         'elements'   => array(
             'fileid' => array(
                 'type'  => 'hidden',
                 'value' => $id,
             ),
             'folderid' => array(
-                'type'    => 'css_select',
+                'type'    => 'select',
                 'title'   => get_string('savetofolder', 'artefact.cloud'),
                 'options' => get_foldertree_options(),
                 //'size'    => 8,                
@@ -61,14 +51,22 @@ if ($save) {
     ));
     
     $smarty = smarty();
-    //$smarty->assign('SERVICE', 'googledrive');
     $smarty->assign('PAGEHEADING', get_string('savetomahara', 'artefact.cloud'));
-    $smarty->assign('saveform', $saveform);
-    $smarty->display('blocktype:googledrive:save.tpl');
-} else {
+    $smarty->assign('form', $saveform);
+    $smarty->display('form.tpl');
+}
+else {
     // Download file
-    $file = PluginBlocktypeGoogledrive::get_file_info($id, $owner);
-    $content = PluginBlocktypeGoogledrive::download_file($id, $owner);
+    $ownerid = null;
+    if ($viewid > 0) {
+        $view = new View($viewid);
+        $ownerid = $view->get('owner');
+    }
+    else {
+        $ownerid = null;
+    }
+    $file = PluginBlocktypeGoogledrive::get_file_info($id, $ownerid);
+    $content = PluginBlocktypeGoogledrive::download_file($id, $ownerid);
     
     header('Pragma: no-cache');
     header('Content-disposition: attachment; filename="' . $file['name'] . '"');
@@ -85,7 +83,8 @@ function saveform_submit(Pieform $form, $values) {
     $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
     if (in_array($extension, array('bmp', 'gif', 'jpg', 'jpeg', 'png'))) {
         $image = true;
-    } else {
+    }
+    else {
         $image = false;
     }
     
@@ -160,5 +159,3 @@ function saveform_submit(Pieform $form, $values) {
     // Redirect
     redirect(get_config('wwwroot') . 'artefact/cloud/blocktype/googledrive/manage.php');
 }
-
-?>

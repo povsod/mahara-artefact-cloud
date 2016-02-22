@@ -5,7 +5,7 @@
  * @subpackage blocktype-box
  * @author     Gregor Anzelj
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2012-2015 Gregor Anzelj, gregor.anzelj@gmail.com
+ * @copyright  (C) 2012-2016 Gregor Anzelj, info@povsod.com
  *
  */
 
@@ -42,6 +42,7 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
         $height   = (!empty($configdata['height']) ? $configdata['height'] : 400);
         
         $smarty = smarty_core();
+        $smarty->assign('SERVICE', 'box');
         switch ($display) {
             case 'embed':
                 $html = '';
@@ -58,14 +59,19 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
                 break;
             case 'list':
             default:
-				$file = self::get_file_info($selected[0]);
-				$folder = $file['parent_id'];
+                if (!empty($selected)) {
+                    $file = self::get_file_info($selected[0]);
+                    $folder = $file['parent_id'];
+                }
+                else {
+                    $folder = 0;
+                }
                 $data = self::get_filelist($folder, $selected, $ownerid);
                 $smarty->assign('folders', $data['folders']);
                 $smarty->assign('files', $data['files']);
         }
         $smarty->assign('viewid', $viewid);
-        return $smarty->fetch('blocktype:box:' . $display . '.tpl');
+        return $smarty->fetch('artefact:cloud:' . $display . '.tpl');
     }
 
     public static function has_instance_config() {
@@ -83,8 +89,8 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
         $view = new View($viewid);
         $ownerid = $view->get('owner');
         
-        $data = ArtefactTypeCloud::get_user_preferences('box', $ownerid);
-        if ($data) {
+        $consumer = self::get_service_consumer();
+        if (isset($consumer->usrprefs['access_token']) && !empty($consumer->usrprefs['access_token'])) {
             return array(
                 'boxlogo' => array(
                     'type' => 'html',
@@ -96,9 +102,9 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
                     'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/box/account.php?action=logout',
                 ),
                 'boxpath' => array(
-				    'type'  => 'hidden',
-					'value' => '0',
-				),
+                    'type'  => 'hidden',
+                    'value' => '0',
+                ),
                 'boxfiles' => array(
                     'type'     => 'datatables',
                     'title'    => get_string('selectfiles','blocktype.cloud/box'),
@@ -125,21 +131,22 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
                 ),
                 'embedoptions' => array(
                     'type'         => 'fieldset',
+                    'class'        => 'last',
                     'collapsible'  => true,
                     'collapsed'    => true,
                     'legend'       => get_string('embedoptions', 'blocktype.cloud/box'),
                     'elements'     => array(
                         'width' => array(
                             'type'  => 'text',
-                            'labelhtml' => get_string('width', 'blocktype.cloud/box'),
-                            'size' => 3,
+                            'title' => get_string('width', 'blocktype.cloud/box'),
+                            'size'  => 3,
                             'defaultvalue' => (!empty($configdata['width']) ? hsc($configdata['width']) : 466),
                             'rules' => array('minvalue' => 1, 'maxvalue' => 2000),
                         ),
                         'height' => array(
                             'type'  => 'text',
-                            'labelhtml' => get_string('height', 'blocktype.cloud/box'),
-                            'size' => 3,
+                            'title' => get_string('height', 'blocktype.cloud/box'),
+                            'size'  => 3,
                             'defaultvalue' => (!empty($configdata['height']) ? hsc($configdata['height']) : 400),
                             'rules' => array('minvalue' => 1, 'maxvalue' => 2000),
                         ),
@@ -156,7 +163,7 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
                 'boxisconnect' => array(
                     'type' => 'cancel',
                     'value' => get_string('connecttobox', 'blocktype.cloud/box'),
-                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/box/account.php?action=login',
+                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/box/account.php?action=login&view=' . $viewid,
                 ),
             );
         }
@@ -194,6 +201,7 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
     }
 
     public static function get_config_options() {
+        global $THEME;
         $consumer = self::get_service_consumer();
         $elements = array();
         $elements['applicationdesc'] = array(
@@ -202,6 +210,9 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
         );
         $elements['applicationgeneral'] = array(
             'type' => 'fieldset',
+            'class' => 'first',
+            'collapsible' => true,
+            'collapsed' => false,
             'legend' => get_string('applicationgeneral', 'blocktype.cloud/box'),
             'elements' => array(
                 'applicationname' => array(
@@ -209,20 +220,20 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
                     'title'        => get_string('applicationname', 'blocktype.cloud/box'),
                     'defaultvalue' => get_config('sitename'),
                     'description'  => get_string('applicationnamedesc', 'blocktype.cloud/box'),
-                    'readonly'     => true,
                 ),
                 'applicationweb' => array(
                     'type'         => 'text',
                     'title'        => get_string('applicationweb', 'blocktype.cloud/box'),
                     'defaultvalue' => get_config('wwwroot'),
                     'description'  => get_string('applicationwebdesc', 'blocktype.cloud/box'),
-                    'size'         => 68,
-                    'readonly'     => true,
                 ),
             )
         );
         $elements['applicationbackend'] = array(
             'type' => 'fieldset',
+            'class' => 'last',
+            'collapsible' => true,
+            'collapsed' => false,
             'legend' => get_string('applicationbackend', 'blocktype.cloud/box'),
             'elements' => array(
                 'consumerkey' => array(
@@ -230,38 +241,36 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
                     'title'        => get_string('consumerkey', 'blocktype.cloud/box'),
                     'defaultvalue' => get_config_plugin('blocktype', 'box', 'consumerkey'),
                     'description'  => get_string('consumerkeydesc', 'blocktype.cloud/box'),
-                    'size' => 40,
-                    'rules' => array('required' => true),
+                    'rules'        => array('required' => true),
                 ),
                 'consumersecret' => array(
                     'type'         => 'text',
                     'title'        => get_string('consumersecret', 'blocktype.cloud/box'),
                     'defaultvalue' => get_config_plugin('blocktype', 'box', 'consumersecret'),
                     'description'  => get_string('consumersecretdesc', 'blocktype.cloud/box'),
-                    'size' => 40,
-                    'rules' => array('required' => true),
+                    'rules'        => array('required' => true),
                 ),
                 'redirecturl' => array(
-                    'type'         => 'html',
+                    'type'         => 'text',
                     'title'        => get_string('redirecturl', 'blocktype.cloud/box'),
                     'value'        => $consumer->callback,
                     'description'  => get_string('redirecturldesc', 'blocktype.cloud/box'),
-                    'size'         => 70,
-                    'readonly'     => true,
-                    'rules' => array('required' => true),
+                    'rules'        => array('required' => true),
                 ),
                 'applicationicon' => array(
                     'type'         => 'html',
                     'title'        => get_string('applicationicon', 'blocktype.cloud/box'),
                     'value'        => '<table border="0"><tr style="text-align:center">
-                                       <td style="vertical-align:bottom"><img src="'.get_config('wwwroot').'artefact/cloud/icons/016x016.jpg" border="0" style="border:1px solid #ccc"><br>16x16</td>
-                                       <td style="vertical-align:bottom"><img src="'.get_config('wwwroot').'artefact/cloud/icons/100x080.jpg" border="0" style="border:1px solid #ccc"><br>100x80</td>
+                                       <td style="vertical-align:bottom;padding:4px"><img src="'.$THEME->get_url('images/016x016.jpg', false, 'artefact/cloud').'" border="0" style="border:1px solid #ccc"><br>16x16</td>
+                                       <td style="vertical-align:bottom;padding:4px"><img src="'.$THEME->get_url('images/064x064.jpg', false, 'artefact/cloud').'" border="0" style="border:1px solid #ccc"><br>64x64</td>
+                                       <td style="vertical-align:bottom;padding:4px"><img src="'.$THEME->get_url('images/100x080.jpg', false, 'artefact/cloud').'" border="0" style="border:1px solid #ccc"><br>100x80</td>
                                        </table>',
                     'description'  => get_string('applicationicondesc', 'blocktype.cloud/box'),
                 ),
             )
         );
         return array(
+            'class' => 'panel panel-body',
             'elements' => $elements,
         );
 
@@ -294,43 +303,43 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
         $service->wwwurl     = 'https://www.box.com/api'; // without trailing slash, since there isn't API version in those URLs
         $service->key        = get_config_plugin('blocktype', 'box', 'consumerkey');
         $service->secret     = get_config_plugin('blocktype', 'box', 'consumersecret');
-		// If SSL is set then force SSL URL for callback
-		if ($service->ssl) {
+        // If SSL is set then force SSL URL for callback
+        if ($service->ssl) {
             $wwwroot = str_replace('http://', 'https://', get_config('wwwroot'));
-		}
+        }
         $service->callback   = $wwwroot . 'artefact/cloud/blocktype/box/callback.php';
         $service->usrprefs   = ArtefactTypeCloud::get_user_preferences('box', $owner);
         return $service;
     }
 
     public function service_list() {
+        global $SESSION;
         $consumer = self::get_service_consumer();
+        $service = new StdClass();
+        $service->name = 'box';
+        $service->url = 'http://www.box.com';
+        $service->auth = false;
+        $service->manage = false;
+        $service->pending = false;
+
         if (!empty($consumer->key)) {
             if (isset($consumer->usrprefs['access_token']) && !empty($consumer->usrprefs['access_token'])) {
-                return array(
-                    'service_name'   => 'box',
-                    'service_url'    => 'http://www.box.com',
-                    'service_auth'   => true,
-                    'service_manage' => true,
-                    //'revoke_access'  => true,
-                );
-            } else {
-                return array(
-                    'service_name'   => 'box',
-                    'service_url'    => 'http://www.box.com',
-                    'service_auth'   => false,
-                    'service_manage' => false,
-                    //'revoke_access'  => false,
-                );
+                $service->auth = true;
+                $service->manage = true;
+                $service->account = self::account_info();
             }
-        } else {
-            throw new ConfigException('Can\'t find Box consumer key and/or consumer secret.');
         }
+        else {
+            $service->pending = true;
+            $SESSION->add_error_msg('Can\'t find Box consumer key and/or consumer secret.');
+        }
+        return $service;
     }
 
     // SEE: https://developers.box.com/oauth/
     // SEE: https://developers.box.com/docs/#oauth-2-authorize
     public function request_token() {
+        global $SESSION;
         $consumer = self::get_service_consumer();
         if (!empty($consumer->key) && !empty($consumer->secret)) {
             $url = $consumer->wwwurl.'/oauth2/authorize';
@@ -343,8 +352,9 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
             $query = oauth_http_build_query($params);
             $request_url = $url . ($query ? ('?' . $query) : '');
             redirect($request_url);
-        } else {
-            throw new ConfigException('Can\'t find Box consumer key and/or consumer secret.');
+        }
+        else {
+            $SESSION->add_error_msg('Can\'t find Box consumer key and/or consumer secret.');
         }
     }
 
@@ -374,22 +384,23 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
                 CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
             );
             $result = mahara_http_request($config);
-            if ($result->info['http_code'] == 200 && !empty($result->data)) {
+            if (isset($result->data) && !empty($result->data) &&
+                isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
                 $data = json_decode($result->data, true);
                 return $data;
             }
             else {
-                $SESSION->add_error_msg(get_string('accesstokennotreturned', 'blocktype.cloud/box'));
+                $SESSION->add_error_msg(get_string('accesstokennotreturned', 'artefact.cloud'));
             }
         }
         else {
-            throw new ConfigException('Can\'t find Box consumer key and/or consumer secret.');
+            $SESSION->add_error_msg('Can\'t find Box consumer key and/or consumer secret.');
         }
     }
 
     // SEE: https://developers.box.com/docs/#oauth-2-token
     public function check_access_token($owner=null) {
-        global $USER/*, $SESSION*/;
+        global $USER, $SESSION;
         $consumer = self::get_service_consumer($owner);
         if (!empty($consumer->key) && !empty($consumer->secret)) {
             // Find out when access token actually expires and take away 10 seconds
@@ -419,10 +430,16 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
                     CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
                 );
                 $result = mahara_http_request($config);
-                if ($result->info['http_code'] == 200 && !empty($result->data)) {
+                if (isset($result->data) && !empty($result->data) &&
+                    isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
                     $prefs = json_decode($result->data, true);
                     ArtefactTypeCloud::set_user_preferences('box', $USER->get('id'), $prefs);
                     return $prefs['access_token'];
+                }
+                else {
+                    $httpstatus = get_http_status($result->info['http_code']);
+                    $SESSION->add_error_msg($httpstatus);
+                    log_warn($httpstatus);
                 }
             }
             // If access token is not expired, than return it...
@@ -431,7 +448,7 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
             }
         }
         else {
-            throw new ConfigException('Can\'t find Box consumer key and/or consumer secret.');
+            $SESSION->add_error_msg('Can\'t find Box consumer key and/or consumer secret.');
         }
     }
 
@@ -443,6 +460,7 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
     // SEE: https://developers.box.com/oauth/
     // SEE: https://developers.box.com/docs/#oauth-2-revoke
     public function revoke_access() {
+        global $SESSION;
         $consumer = self::get_service_consumer();
         if (!empty($consumer->key) && !empty($consumer->secret)) {
             $url = $consumer->wwwurl.'/oauth2/revoke';
@@ -463,15 +481,29 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
                 CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
             );
             $result = mahara_http_request($config);
-        } else {
-            throw new ConfigException('Can\'t find Box consumer key and/or consumer secret.');
+        }
+        else {
+            $SESSION->add_error_msg('Can\'t find Box consumer key and/or consumer secret.');
         }
     }
     
     // SEE: https://developers.box.com/docs/#users-get-the-current-users-information
     public function account_info() {
+        global $SESSION;
         $consumer = self::get_service_consumer();
         $token = self::check_access_token();
+
+        $info = new StdClass();
+        $info->service_name = 'box';
+        $info->service_auth = false;
+        $info->user_id      = null;
+        $info->user_name    = null;
+        $info->user_email   = null;
+        $info->user_profile = null;
+        $info->space_used   = null;
+        $info->space_amount = null;
+        $info->space_ratio  = null;
+
         if (!empty($consumer->key) && !empty($consumer->secret)) {
             $url = $consumer->apiurl.$consumer->version.'/users/me';
             $port = $consumer->ssl ? '443' : '80';
@@ -486,44 +518,31 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
                 CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
             );
             $result = mahara_http_request($config);
-            if ($result->info['http_code'] == 200 && !empty($result->data)) {
+            if (isset($result->data) && !empty($result->data) &&
+                isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
                 $account = json_decode(substr($result->data, $result->info['header_size']), true);
-                return array(
-                    'service_name' => 'box',
-                    'service_auth' => true,
-                    'user_id'      => $account['id'],
-                    'user_name'    => $account['name'],
-                    'user_email'   => $account['login'],
-                    'space_used'   => bytes_to_size1024(floatval($account['space_used'])),
-                    'space_amount' => bytes_to_size1024(floatval($account['space_amount'])),
-                    'space_ratio'  => number_format((floatval($account['space_used'])/floatval($account['space_amount']))*100, 2),
-                );
+
+                $info->service_name = 'box';
+                $info->service_url  = 'http://www.box.com';
+                $info->service_auth = true;
+                $info->user_id      = $account['id'];
+                $info->user_name    = $account['name'];
+                $info->user_email   = $account['login'];
+                $info->space_used   = bytes_to_size1024(floatval($account['space_used']));
+                $info->space_amount = bytes_to_size1024(floatval($account['space_amount']));
+                $info->space_ratio  = number_format((floatval($account['space_used'])/floatval($account['space_amount']))*100, 2);
+                return $info;
             }
             else {
-                return array(
-                    'service_name' => 'box',
-                    'service_auth' => false,
-                    'user_id'      => null,
-                    'user_name'    => null,
-                    'user_email'   => null,
-                    'space_used'   => null,
-                    'space_amount' => null,
-                    'space_ratio'  => null,
-                );
+                $httpstatus = get_http_status($result->info['http_code']);
+                $SESSION->add_error_msg($httpstatus);
+                log_warn($httpstatus);
             }
-         }
-         else {
-            return array(
-                'service_name' => 'box',
-                'service_auth' => false,
-                'user_id'      => null,
-                'user_name'    => null,
-                'user_email'   => null,
-                'space_used'   => null,
-                'space_amount' => null,
-                'space_ratio'  => null,
-            );
         }
+        else {
+            $SESSION->add_error_msg('Can\'t find Box consumer key and/or consumer secret.');
+        }
+        return $info;
     }
     
     /*
@@ -536,7 +555,7 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
      *
      */
     public function get_filelist($folder_id=0, $selected=array(), $owner=null) {
-		global $THEME;
+        global $SESSION;
 
         // Get folder contents...
         $consumer = self::get_service_consumer($owner);
@@ -555,7 +574,8 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
                 CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
             );
             $result = mahara_http_request($config);
-            if ($result->info['http_code'] == 200 && !empty($result->data)) {
+            if (isset($result->data) && !empty($result->data) &&
+                isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
                 $data = json_decode(substr($result->data, $result->info['header_size']));
                 $output = array(
                     'folders' => array(),
@@ -566,23 +586,43 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
                         if (in_array($artefact->id, $selected)) {
                             $id          = $artefact->id;
                             $type        = $artefact->type;
-                            $icon        = $THEME->get_url('images/' . $type . '.png');
                             $title       = $artefact->name;
                             $description = $artefact->description;
                             $size        = bytes_to_size1024($artefact->size);
                             $created     = ($artefact->created_at ? format_date(strtotime($artefact->created_at), 'strftimedaydate') : null);
                             if ($type == 'folder') {
-                                $output['folders'][] = array('iconsrc' => $icon, 'id' => $id, 'type' => $type, 'title' => $title, 'description' => $description, 'size' => $size, 'ctime' => $created);
-                            } else {
-                                $output['files'][] = array('iconsrc' => $icon, 'id' => $id, 'type' => $type, 'title' => $title, 'description' => $description, 'size' => $size, 'ctime' => $created);
+                                $output['folders'][] = array(
+                                    'id' => $id,
+                                    'title' => $title,
+                                    'description' => $description,
+                                    'artefacttype' => $type,
+                                    'size' => $size,
+                                    'ctime' => $created,
+                                );
+                            }
+                            else {
+                                $output['files'][] = array(
+                                    'id' => $id,
+                                    'title' => $title,
+                                    'description' => $description,
+                                    'artefacttype' => $type,
+                                    'size' => $size,
+                                    'ctime' => $created,
+                                );
                             }
                         }
                     }
                 }                    
                 return $output;
             }
-        } else {
-            throw new ConfigException('Can\'t find Box consumer key and/or consumer secret.');
+            else {
+                $httpstatus = get_http_status($result->info['http_code']);
+                $SESSION->add_error_msg($httpstatus);
+                log_warn($httpstatus);
+            }
+        }
+        else {
+            $SESSION->add_error_msg('Can\'t find Box consumer key and/or consumer secret.');
         }
     }
 
@@ -599,21 +639,23 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
      * PLEASE NOTE: For jQuery Datatable to work, the $output array must be properly formatted and JSON encoded.
      *              Please see: http://datatables.net/usage/server-side (Reply from the server)!
      *
-	 * SEE: https://developers.box.com/docs/#folders-get-information-about-a-folder
+     * SEE: https://developers.box.com/docs/#folders-get-information-about-a-folder
      * SEE: https://developers.box.com/docs/#folders-retrieve-a-folders-items
      */
     public function get_folder_content($folder_id=0, $options, $block=0) {
-        global $THEME;
+        global $SESSION;
         
         // Get selected artefacts (folders and/or files)
         if ($block > 0) {
             $data = unserialize(get_field('block_instance', 'configdata', 'id', $block));
             if (!empty($data) && isset($data['artefacts'])) {
                 $artefacts = $data['artefacts'];
-            } else {
+            }
+            else {
                 $artefacts = array();
             }
-        } else {
+        }
+        else {
             $artefacts = array();
         }
         
@@ -627,13 +669,13 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
 
         
         // Get folder parent...
-		$parent_id = 0; // either 'root' folder itself or parent is 'root' folder
-		$folder = self::get_folder_info($folder_id);
-		if (!empty($folder['parent_id'])) {
-			$parent_id = $folder['parent_id'];
-		}
+        $parent_id = 0; // either 'root' folder itself or parent is 'root' folder
+        $folder = self::get_folder_info($folder_id);
+        if (!empty($folder['parent_id'])) {
+            $parent_id = $folder['parent_id'];
+        }
 
-		// Get folder contents...
+        // Get folder contents...
         $consumer = self::get_service_consumer();
         $token = self::check_access_token();
         if (!empty($consumer->key) && !empty($consumer->secret)) {
@@ -650,7 +692,8 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
                 CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
             );
             $result = mahara_http_request($config);
-            if ($result->info['http_code'] == 200 && !empty($result->data)) {
+            if (isset($result->data) && !empty($result->data) &&
+                isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
                 $data = json_decode(substr($result->data, $result->info['header_size']));
                 $output = array();
                 $count = 0;
@@ -658,21 +701,23 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
                 if ($folder_id > 0) {
                     $type        = 'parentfolder';
                     $foldername  = get_string('parentfolder', 'artefact.file');
-                    $title       = '<a class="changefolder" href="javascript:void(0)" id="' . $parent_id . '" title="' . get_string('gotofolder', 'artefact.file', $foldername) . '"><img src="' . $THEME->get_url('images/parentfolder.png') . '"></a>';
-                    $output['aaData'][] = array('', $title, '', $type);
+                    $icon        = '<span class="icon-level-up icon icon-lg"></span>';
+                    $title       = '<a class="changefolder" href="javascript:void(0)" id="' . $parent_id . '" title="' . get_string('gotofolder', 'artefact.file', $foldername) . '">' . $foldername . '</a>';
+                    $output['data'][] = array($icon, $title, '', $type);
                 }
                 if (!empty($data->entries)) {
-				    $detailspath = get_config('wwwroot') . 'artefact/cloud/blocktype/box/details.php';
+                    $detailspath = get_config('wwwroot') . 'artefact/cloud/blocktype/box/details.php';
                     foreach($data->entries as $artefact) {
-                        $id           = $artefact->id;
-                        $type         = $artefact->type;
-                        $icon         = '<img src="' . $THEME->get_url('images/' . $type . '.png') . '">';
+                        $id   = $artefact->id;
+                        $type = $artefact->type;
                         $artefactname = $artefact->name;
                         if ($artefact->type == 'folder') {
-                            $title    = '<a class="changefolder" href="javascript:void(0)" id="' . $id . '" title="' . get_string('gotofolder', 'artefact.file', $artefactname) . '">' . $artefactname . '</a>';
+                            $icon  = '<span class="icon-folder-open icon icon-lg"></span>';
+                            $title = '<a class="changefolder" href="javascript:void(0)" id="' . $id . '" title="' . get_string('gotofolder', 'artefact.file', $artefactname) . '">' . $artefactname . '</a>';
                         }
                         else {
-                            $title    = '<a class="filedetails" href="' . $detailspath . '?id=' . $id . '" title="' . get_string('filedetails', 'artefact.cloud', $artefactname) . '">' . $artefactname . '</a>';
+                            $icon  = '<span class="icon-file icon icon-lg"></span>';
+                            $title = '<a class="filedetails" href="' . $detailspath . '?id=' . $id . '" title="' . get_string('filedetails', 'artefact.cloud', $artefactname) . '">' . $artefactname . '</a>';
                         }
                         $controls = '';
                         $selected = (in_array(''.$id, $artefacts) ? ' checked' : '');
@@ -686,29 +731,34 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
                                 $controls = '<input type="' . ($selectMultiple ? 'checkbox' : 'radio') . '" name="artefacts[]" id="artefacts[]" value="' . $id . '"' . $selected . '>';
                             }
                             elseif ($manageButtons) {
-                                $controls  = '<div class="btns3">';
-                                $controls .= '<a title="' . get_string('preview', 'artefact.cloud') . '" href="preview.php?id=' . $id . '" target="_blank"><img src="' . get_config('wwwroot') . 'artefact/cloud/theme/raw/static/images/btn_preview.png" alt="' . get_string('preview', 'artefact.cloud') . '"></a>';
-                                $controls .= '<a title="' . get_string('save', 'artefact.cloud') . '" href="download.php?id=' . $id . '&save=1"><img src="' . get_config('wwwroot') . 'artefact/cloud/theme/raw/static/images/btn_save.png" alt="' . get_string('save', 'artefact.cloud') . '"></a>';
-                                $controls .= '<a title="' . get_string('download', 'artefact.cloud') . '" href="download.php?id=' . $id . '"><img src="' . get_config('wwwroot') . 'artefact/cloud/theme/raw/static/images/btn_download.png" alt="' . get_string('download', 'artefact.cloud') . '"></a>';
+                                $controls  = '<div class="btn-group">';
+                                $controls .= '<a class="btn btn-default btn-xs" title="' . get_string('save', 'artefact.cloud') . '" href="download.php?id=' . $id . '&save=1"><span class="icon icon-floppy-o icon-lg"></span></a>';
+                                $controls .= '<a class="btn btn-default btn-xs" title="' . get_string('download', 'artefact.cloud') . '" href="download.php?id=' . $id . '"><span class="icon icon-download icon-lg"></span></a>';
                                 $controls .= '</div>';
                             }
                         }
-                        $output['aaData'][] = array($icon, $title, $controls, $type);
+                        $output['data'][] = array($icon, $title, $controls, $type);
                         $count++;
                     }
                 }
-                $output['iTotalRecords'] = $count;
-                $output['iTotalDisplayRecords'] = $count;
+                $output['recordsTotal'] = $count;
+                $output['recordsFiltered'] = $count;
                 return json_encode($output);
+            }
+            else {
+                $httpstatus = get_http_status($result->info['http_code']);
+                $SESSION->add_error_msg($httpstatus);
+                log_warn($httpstatus);
             }
         }
         else {
-            throw new ConfigException('Can\'t find Box consumer key and/or consumer secret.');
+            $SESSION->add_error_msg('Can\'t find Box consumer key and/or consumer secret.');
         }
     }
 
     // SEE: https://developers.box.com/docs/#folders-get-information-about-a-folder
     public function get_folder_info($folder_id=0, $owner=null) {
+        global $SESSION;
         $consumer = self::get_service_consumer($owner);
         $token = self::check_access_token($owner);
         if (!empty($consumer->key) && !empty($consumer->secret)) {
@@ -725,29 +775,35 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
                 CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
             );
             $result = mahara_http_request($config);
-            if ($result->info['http_code'] == 200 && !empty($result->data)) {
+            if (isset($result->data) && !empty($result->data) &&
+                isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
                 $data = json_decode(substr($result->data, $result->info['header_size']), true);
                 $info = array(
                     'id'          => $data['id'],
-					'parent_id'   => $data['parent']['id'],
+                    'parent_id'   => $data['parent']['id'],
                     'name'        => $data['name'],
                     'bytes'       => $data['size'],
                     'size'        => bytes_to_size1024($data['size']),
                     'description' => $data['description'],
                     'created'     => format_date(strtotime($data['created_at']), 'strfdaymonthyearshort'),
                     'updated'     => format_date(strtotime($data['modified_at']), 'strfdaymonthyearshort'),
-                    'preview'     => $data['shared_link']['url'],
                 );
                 return $info;
             }
+            else {
+                $httpstatus = get_http_status($result->info['http_code']);
+                $SESSION->add_error_msg($httpstatus);
+                log_warn($httpstatus);
+            }
         }
         else {
-            throw new ConfigException('Can\'t find Box consumer key and/or consumer secret.');
+            $SESSION->add_error_msg('Can\'t find Box consumer key and/or consumer secret.');
         }
     }
 
     // SEE: https://developers.box.com/docs/#files-get
     public function get_file_info($file_id=0, $owner=null) {
+        global $SESSION;
         $consumer = self::get_service_consumer($owner);
         $token = self::check_access_token($owner);
         if (!empty($consumer->key) && !empty($consumer->secret)) {
@@ -764,29 +820,35 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
                 CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
             );
             $result = mahara_http_request($config);
-            if ($result->info['http_code'] == 200 && !empty($result->data)) {
+            if (isset($result->data) && !empty($result->data) &&
+                isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
                 $data = json_decode(substr($result->data, $result->info['header_size']), true);
                 $info = array(
                     'id'          => $data['id'],
-					'parent_id'   => $data['parent']['id'],
+                    'parent_id'   => $data['parent']['id'],
                     'name'        => $data['name'],
                     'bytes'       => $data['size'],
                     'size'        => bytes_to_size1024($data['size']),
                     'description' => $data['description'],
                     'created'     => format_date(strtotime($data['created_at']), 'strfdaymonthyearshort'),
                     'updated'     => format_date(strtotime($data['modified_at']), 'strfdaymonthyearshort'),
-                    'preview'     => $data['shared_link']['url'],
                 );
                 return $info;
             }
+            else {
+                $httpstatus = get_http_status($result->info['http_code']);
+                $SESSION->add_error_msg($httpstatus);
+                log_warn($httpstatus);
+            }
         }
         else {
-            throw new ConfigException('Can\'t find Box consumer key and/or consumer secret.');
+            $SESSION->add_error_msg('Can\'t find Box consumer key and/or consumer secret.');
         }
     }
 
     // SEE: https://developers.box.com/docs/#files-download-a-file
     public function download_file($file_id=0, $owner=null) {
+        global $SESSION;
         $consumer = self::get_service_consumer($owner);
         $token = self::check_access_token($owner);
         if (!empty($consumer->key) && !empty($consumer->secret)) {
@@ -820,12 +882,15 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
             curl_close($ch2);
             return $result2;
         }
+        else {
+            $SESSION->add_error_msg('Can\'t find Box consumer key and/or consumer secret.');
+        }
     }
 
     // SEE: https://developers.box.com/box-embed/
     public function embed_file($file_id=0, $options=array(), $owner=null) {
         $data = self::get_file_info($file_id, $owner);
-        $shared = basename($data['preview']);
+        $shared = (isset($data['preview']) ? basename($data['preview']) : null);
         $width = (isset($options['width']) ? $options['width'] : 400);
         $height = (isset($options['height']) ? $options['height'] : 300);
 
@@ -835,5 +900,3 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
     }
 
 }
-
-?>

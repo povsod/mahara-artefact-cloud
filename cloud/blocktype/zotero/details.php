@@ -5,7 +5,7 @@
  * @subpackage blocktype-zotero
  * @author     Gregor Anzelj
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2014 Gregor Anzelj, gregor.anzelj@gmail.com
+ * @copyright  (C) 2012-2016 Gregor Anzelj, info@povsod.com
  *
  */
 
@@ -33,19 +33,27 @@ $data = array();
 if ($type == 'collection') {
     // It doesn't return correct data. Do we actually need this?
     $data = PluginBlocktypeZotero::get_folder_info($id, $ownerid);
-} else {
+}
+else {
     $data = PluginBlocktypeZotero::get_file_info($id, $ownerid);
 }
 
 if ($viewid > 0) {
     define('TITLE', $data['name'] . ' ' . get_string('in', 'view') . ' ' . $view->get('title'));
-} else {
+}
+else {
     define('TITLE', get_string('filedetails', 'artefact.cloud', $data['name']));
 }
 
 
-$smarty = smarty();
+$smarty = smarty(
+    array(),
+    array(),
+    array(),
+    array('sidebars' => false)
+);
 
+$smarty->assign('SERVICE', 'zotero');
 $smarty->assign('id', $id);
 $smarty->assign('type', $type);
 $smarty->assign('viewid', $viewid);
@@ -64,6 +72,4 @@ if ($viewid > 0) {
     $smarty->assign('ownername', $view->formatted_owner());
 }
 
-$smarty->display('blocktype:zotero:details.tpl');
-
-?>
+$smarty->display('artefact:cloud:details.tpl');

@@ -5,7 +5,7 @@
  * @subpackage blocktype-zotero
  * @author     Gregor Anzelj
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2014 Gregor Anzelj, gregor.anzelj@gmail.com
+ * @copyright  (C) 2012-2016 Gregor Anzelj, info@povsod.com
  *
  */
 
@@ -20,15 +20,16 @@ define('TITLE', get_string('servicename', 'blocktype.cloud/zotero'));
 require_once('lib.php');
 
 $action = param_alpha('action', 'info');
+$viewid = param_integer('view', 0);
+
+if ($viewid > 0) {
+    $USER->set_account_preference('lasteditedview', $viewid);
+}
+else {
+    $USER->set_account_preference('lasteditedview', null);
+}
 
 switch ($action) {
-    case 'test':
-        //$test = PluginBlocktypeZotero::download_file('GTKAWN7Q');
-        //$test = PluginBlocktypeZotero::get_file_info('GTKAWN7Q');
-        //PluginBlocktypeZotero::get_folder_info('II7IVJ23');
-        //$test = PluginBlocktypeZotero::get_bibbase();
-        $test = PluginBlocktypeZotero::get_folder_content('cs');
-        break;
     case 'login':
         PluginBlocktypeZotero::request_token();
         break;
@@ -39,10 +40,5 @@ switch ($action) {
         redirect(get_config('wwwroot').'artefact/cloud');
         break;
     default:
-        $account = PluginBlocktypeZotero::account_info();
-        $smarty = smarty();
-        $smarty->assign('account', $account);
-        $smarty->display('artefact:cloud:account.tpl');
+        throw new ParameterException("Parameter for login to or logout from Zotero is missing.");
 }
-
-?>

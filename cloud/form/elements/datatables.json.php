@@ -5,7 +5,7 @@
  * @subpackage element
  * @author     Gregor Anzelj
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2012-2015 Gregor Anzelj, gregor.anzelj@gmail.com
+ * @copyright  (C) 2012-2016 Gregor Anzelj, info@povsod.com
  *
  */
 
@@ -28,5 +28,3 @@ header('Content-type: text/plain');
 header('Pragma: no-cache');
 
 echo $filelist;
-
-?>

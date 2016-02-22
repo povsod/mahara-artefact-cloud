@@ -5,7 +5,7 @@
  * @subpackage artefact-cloud
  * @author     Gregor Anzelj
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2012-2015 Gregor Anzelj, gregor.anzelj@gmail.com
+ * @copyright  (C) 2012-2016 Gregor Anzelj, info@povsod.com
  *
  */
 
@@ -26,14 +26,13 @@ $clouds = ArtefactTypeCloud::get_user_services($USER->get('id'));
 foreach ($clouds as $cloud) {
     // Usually this file should exist (but if it happens to be deleted, don't try opening it)...
     if (file_exists(get_config('docroot') . 'artefact/cloud/blocktype/' . $cloud->title . '/lib.php')) {
-	    require_once('blocktype/' . $cloud->title . '/lib.php');
+        require_once('blocktype/' . $cloud->title . '/lib.php');
         $data[] = call_static_method(generate_class_name('blocktype', $cloud->title), 'service_list');
-	}
+    }
 }
 
 $smarty = smarty();
+setpageicon($smarty, 'icon icon-cloud');
 $smarty->assign('PAGEHEADING', TITLE);
 $smarty->assign('data', $data);
 $smarty->display('artefact:cloud:index.tpl');
-
-?>

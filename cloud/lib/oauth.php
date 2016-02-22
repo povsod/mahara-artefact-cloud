@@ -5,7 +5,7 @@
  * @subpackage artefact-cloud
  * @author     Gregor Anzelj
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2012-2015 Gregor Anzelj, gregor.anzelj@gmail.com
+ * @copyright  (C) 2012-2016 Gregor Anzelj, info@povsod.com
  *
  *
  * This file incorporates work covered by the following copyright and
@@ -332,6 +332,3 @@ function rfc3986_decode($raw_input)
 {
   return rawurldecode($raw_input);
 }
-
-
-?>

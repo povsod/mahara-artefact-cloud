@@ -19,7 +19,6 @@ require_once(get_config('docroot') . 'artefact/cloud/lib.php');
 require_once('lib.php');
 
 global $USER;
-//$user_id     = param_integer('uid', 0);
 $oauth_token = param_alphanum('oauth_token', null);
 $oauth_verifier = param_alphanum('oauth_verifier', null);
 
@@ -30,11 +29,19 @@ $token = array_merge($token, array('oauth_verifier' => $oauth_verifier));
 
 if (isset($oauth_token) && $oauth_token == $token['oauth_token']) {
     PluginBlocktypeZotero::access_token($token);
-    $SESSION->add_ok_msg(get_string('accesstokensaved', 'blocktype.cloud/zotero'));
-} else {
-    $SESSION->add_error_msg(get_string('accesstokensavefailed', 'blocktype.cloud/zotero'));
+    $SESSION->add_ok_msg(get_string('accesstokensaved', 'artefact.cloud'));
+}
+else {
+    $SESSION->add_error_msg(get_string('accesstokensavefailed', 'artefact.cloud'));
 }
 
+// If user edited a page, then return to that page
+$viewid = $USER->get_account_preference('lasteditedview');
+if (isset($viewid) && !empty($viewid)) {
+    $USER->set_account_preference('lasteditedview', null);
+    redirect(get_config('wwwroot').'view/blocks.php?id='.$viewid);
+}
+
+// Otherwise return to Cloud plugin dashboard
 redirect(get_config('wwwroot').'artefact/cloud');
 
-?>

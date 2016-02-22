@@ -5,7 +5,7 @@
  * @subpackage blocktype-picasa
  * @author     Gregor Anzelj
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2012-2015 Gregor Anzelj, gregor.anzelj@gmail.com
+ * @copyright  (C) 2012-2016 Gregor Anzelj, info@povsod.com
  *
  */
 
@@ -34,17 +34,17 @@ if ($save) {
     // Save file to Mahara
     $saveform = pieform(array(
         'name'       => 'saveform',
-        'renderer'   => 'maharatable',
         'plugintype' => 'artefact',
         'pluginname' => 'cloud',
-        'configdirs' => array(get_config('libroot') . 'form/', get_config('docroot') . 'artefact/cloud/form/'),
+        'template'   => 'saveform.php',
+        'templatedir' => pieform_template_dir('saveform.php', 'artefact/cloud'),
         'elements'   => array(
             'fileid' => array(
                 'type'  => 'hidden',
                 'value' => $id,
             ),
             'folderid' => array(
-                'type'    => 'css_select',
+                'type'    => 'select',
                 'title'   => get_string('savetofolder', 'artefact.cloud'),
                 'options' => get_foldertree_options(),
                 //'size'    => 8,                
@@ -61,14 +61,22 @@ if ($save) {
     ));
     
     $smarty = smarty();
-    //$smarty->assign('SERVICE', 'picasa');
     $smarty->assign('PAGEHEADING', get_string('savetomahara', 'artefact.cloud'));
-    $smarty->assign('saveform', $saveform);
-    $smarty->display('blocktype:picasa:save.tpl');
-} else {
+    $smarty->assign('form', $saveform);
+    $smarty->display('form.tpl');
+}
+else {
     // Download file
-    $file = PluginBlocktypePicasa::get_file_info($id, $owner);
-    $content = PluginBlocktypePicasa::download_file($id, $owner);
+    $ownerid = null;
+    if ($viewid > 0) {
+        $view = new View($viewid);
+        $ownerid = $view->get('owner');
+    }
+    else {
+        $ownerid = null;
+    }
+    $file = PluginBlocktypePicasa::get_file_info($id, $ownerid);
+    $content = PluginBlocktypePicasa::download_file($id, $ownerid);
     
     header('Pragma: no-cache');
     header('Content-disposition: attachment; filename="' . $file['name'] . '"');
@@ -142,5 +150,3 @@ function saveform_submit(Pieform $form, $values) {
     // Redirect
     redirect(get_config('wwwroot') . 'artefact/cloud/blocktype/picasa/manage.php');
 }
-
-?>

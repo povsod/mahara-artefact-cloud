@@ -5,36 +5,37 @@
  * @subpackage blocktype-googledrive
  * @author     Gregor Anzelj
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2012-2015 Gregor Anzelj, gregor.anzelj@gmail.com
+ * @copyright  (C) 2012-2016 Gregor Anzelj, info@povsod.com
  *
  */
 
 defined('INTERNAL') || die();
 
-$string['title'] = 'File(s) from Google Drive';
+$string['title'] = 'Google Drive';
 $string['description'] = 'Select files from Google Drive cloud';
 
-$string['service'] = 'GoogleDrive'; // Same as plugin folder name, but can be CamelCase, e.g.: SkyDrive
-$string['servicename'] = 'Google Drive'; // Full service name, e.g.: Windows Live SkyDrive
+$string['service'] = 'GoogleDrive';
+$string['servicename'] = 'Google Drive';
 
-$string['tickernotreturned'] = 'There was no ticket';
-$string['accesstokennotreturned'] = 'There was no access token';
-$string['accesstokensaved'] = 'Access token saved sucessfully';
-$string['accesstokensavefailed'] = 'Failed to save access token';
-
-$string['applicationdesc'] = 'You must register your application as an API Project in %sGoogle\'s APIs Console%s, and enable the "Drive API" in the "API Access" tab of a project (on the left).';
-$string['brandinginformation'] = 'Branding information';
-$string['productname'] = 'Product name';
-$string['productnamedesc'] = 'You must provide unique product name, e.g. the name of this site.';
-$string['productlogo'] = 'Product logo';
-$string['productlogodesc'] = 'You must provide URL address to your product logo. Logo size must not exceed 120x60 pixels.';
-$string['webappsclientid'] = 'Client ID for web applications ';
+$string['applicationdesc'] = '<p>You must create project and register your application in %sGoogle Cloud Platform API Manager%s. In the Google API Manager on "Credentials" tab select "OAuth client ID" from "Create credentials" drop-down box. For <code>Application type</code> select "Web application", fill-in <code>Name</code> and <code>Authorized redirect URIs</code> of your application and then create it.</p>
+<p>When the application is generated you can customize the consent screen by clicking the link "OAuth consent screen" and filling-in the appropriate values.</p>';
+$string['webappsclientid'] = 'Credentials';
 $string['consumerkey'] = 'Client ID';
 $string['consumerkeydesc'] = 'When you\'ll create a product, you\'ll get a Client ID. Paste it here.';
 $string['consumersecret'] = 'Client secret';
 $string['consumersecretdesc'] = 'When you\'ll create a product, you\'ll get an Client secret. Paste it here.';
-$string['redirecturl'] = 'Redirect URI';
+$string['redirecturl'] = 'Authorized redirect URI';
 $string['redirecturldesc'] = 'URL to return user to, after successful authentication. Copy it and paste it to the list of Authorized Redirect URIs.';
+
+$string['brandinginformation'] = 'OAuth consent screen';
+$string['productname'] = 'Product name shown to users';
+$string['productnamedesc'] = 'You must provide unique product name, e.g. the name of this site.';
+$string['productweb'] = 'Homepage URL (Optional)';
+$string['productwebdesc'] = 'The URL where this product will be used, e.g. URL of your site.';
+$string['productlogo'] = 'Product logo URL (Optional)';
+$string['productlogodesc'] = 'You must provide URL address to your product logo. Logo size must not exceed 120x120 pixels.';
+$string['privacyurl'] = 'Privacy policy URL (Optional)';
+$string['termsurl'] = 'Terms of service URL (Optional)';
 
 $string['selectfiles'] = 'Select files';
 $string['revokeconnection'] = 'Revoke connection to Google Drive';
@@ -57,9 +58,11 @@ $string['height'] = 'Height';
 $string['allowdownload'] = 'Allow download';
 $string['allowprint'] = 'Allow print';
 $string['allowshare'] = 'Allow share';
-$string['allow'] = 'Which actions are allowed?'; // Katera dejanja so dovoljena?
+$string['allow'] = 'Which actions are allowed?';
 
 // Export text formats
+$string['exportnotpossible'] = 'Export is not possible.';
+$string['text/csv'] = 'CSV';
 $string['text/html'] = 'HTML';
 $string['text/plain'] = 'Plain Text';
 $string['image/jpeg'] = 'JPEG image';
@@ -79,5 +82,3 @@ $string['application/vnd.oasis.opendocument.presentation'] = 'OpenDocument Prese
 $string['application/x-vnd.oasis.opendocument.presentation'] = 'OpenDocument Presentation';
 $string['application/vnd.ms-powerpoint'] = 'Microsoft PowerPoint 97-2003';
 $string['application/vnd.openxmlformats-officedocument.presentationml.presentation'] = 'Microsoft PowerPoint';
-
-?>

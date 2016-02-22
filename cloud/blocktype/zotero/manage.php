@@ -5,7 +5,7 @@
  * @subpackage blocktype-zotero
  * @author     Gregor Anzelj
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2014 Gregor Anzelj, gregor.anzelj@gmail.com
+ * @copyright  (C) 2012-2016 Gregor Anzelj, info@povsod.com
  *
  */
 
@@ -29,39 +29,46 @@ else {
 
 $manageform = pieform(array(
     'name'       => 'manageform',
-    'renderer'   => 'datatables',
     'plugintype' => 'artefact',
     'pluginname' => 'cloud',
     'configdirs' => array(get_config('libroot') . 'form/', get_config('docroot') . 'artefact/cloud/form/'),
     'elements'   => array(
-	    'export' => array(
-            'type' => 'select', 
-            'title' => get_string('selectexportformat', 'blocktype.cloud/zotero'),
-            'value' => null,
-            'defaultvalue' => $exportformat,
-            'options' => array(
-			    'bibtex' => 'BibTeX',
-				'bookmarks' => 'Netscape Bookmark(s)',
-				'coins' => 'COinS (ContextObjects in Spans)',
-				'csljson' => 'Citation Style Language',
-				'mods' => 'MODS (Metadata Object Description Schema)',
-				'refer' => 'Refer/BibIX',
-				'rdf_bibliontology' => 'Bibliographic Ontology RDF',
-				'rdf_dc' => 'Unqualified Dublin Core RDF',
-				'rdf_zotero' => 'Zotero RDF',
-				'ris' => 'RIS (Research Information Systems)',
-				'tei' => 'TEI (Text Encoding Initiative)',
-				'wikipedia' => 'Wikipedia Citation Templates',
-			),
-		),
-		'submit' => array(
-            'type' => 'submit',
-            'value' => get_string('save'),
-            //'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/zotero/manage.php',
-		),
+        'exportsettings' => array(
+            'type' => 'fieldset',
+            'class' => 'last',
+            'legend' => get_string('exportsettings', 'blocktype.cloud/zotero'),
+            'collapsible' => true,
+            'collapsed' => true,
+            'elements' => array(
+                'export' => array(
+                    'type' => 'select', 
+                    'title' => get_string('selectexportformat', 'blocktype.cloud/zotero'),
+                    'value' => null,
+                    'defaultvalue' => $exportformat,
+                    'options' => array(
+                        'bibtex' => 'BibTeX',
+                        'bookmarks' => 'Netscape Bookmark(s)',
+                        'coins' => 'COinS (ContextObjects in Spans)',
+                        'csljson' => 'Citation Style Language',
+                        'mods' => 'MODS (Metadata Object Description Schema)',
+                        'refer' => 'Refer/BibIX',
+                        'rdf_bibliontology' => 'Bibliographic Ontology RDF',
+                        'rdf_dc' => 'Unqualified Dublin Core RDF',
+                        'rdf_zotero' => 'Zotero RDF',
+                        'ris' => 'RIS (Research Information Systems)',
+                        'tei' => 'TEI (Text Encoding Initiative)',
+                        'wikipedia' => 'Wikipedia Citation Templates',
+                    ),
+                ),
+                'submit' => array(
+                    'type' => 'submit',
+                    'value' => get_string('save'),
+                ),
+            ),
+        ),
         'manage' => array(
             'type'     => 'datatables',
-            'title'    => '', //get_string('selectfiles','blocktype.cloud/dropbox'),
+            'title'    => '',
             'service'  => 'zotero',
             'block'    => 0,
             'fullpath' => null,
@@ -80,13 +87,11 @@ $manageform = pieform(array(
 function manageform_submit(Pieform $form, $values) {
     global $USER;
     set_account_preference($USER->get('id'), 'zoteroexportformat', $values['export']);
-	redirect('/artefact/cloud/blocktype/zotero/manage.php');
+    redirect('/artefact/cloud/blocktype/zotero/manage.php');
 }
 
 
 $smarty = smarty(array(get_config('wwwroot').'artefact/cloud/blocktype/zotero/script.js'));
 $smarty->assign('SERVICE', 'zotero');
 $smarty->assign('manageform', $manageform);
-$smarty->display('blocktype:zotero:manage.tpl');
-
-?>
+$smarty->display('artefact:cloud:manage.tpl');

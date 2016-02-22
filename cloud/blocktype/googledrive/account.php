@@ -5,7 +5,7 @@
  * @subpackage blocktype-googledrive
  * @author     Gregor Anzelj
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2012-2015 Gregor Anzelj, gregor.anzelj@gmail.com
+ * @copyright  (C) 2012-2016 Gregor Anzelj, info@povsod.com
  *
  */
 
@@ -20,12 +20,16 @@ define('TITLE', get_string('servicename', 'blocktype.cloud/googledrive'));
 require_once('lib.php');
 
 $action = param_alpha('action', 'info');
+$viewid = param_integer('view', 0);
 
+if ($viewid > 0) {
+    $USER->set_account_preference('lasteditedview', $viewid);
+}
+else {
+    $USER->set_account_preference('lasteditedview', null);
+}
 
 switch ($action) {
-    case 'test':
-        PluginBlocktypeGoogledrive::get_folder_content();
-        break;
     case 'login':
         PluginBlocktypeGoogledrive::request_token();
         break;
@@ -35,12 +39,5 @@ switch ($action) {
         redirect(get_config('wwwroot').'artefact/cloud');
         break;
     default:
-        $account = PluginBlocktypeGoogledrive::account_info();
-        $smarty = smarty();
-        //$smarty->assign('PAGEHEADING', TITLE);
-        $smarty->assign('account', $account);
-        $smarty->display('artefact:cloud:account.tpl');
+        throw new ParameterException("Parameter for login to or logout from Google Drive is missing.");
 }
-
-
-?>
