@@ -22,13 +22,6 @@ require_once('lib.php');
 $action = param_alpha('action', 'info');
 
 switch ($action) {
-    case 'test':
-        //$test = PluginBlocktypeZotero::download_file('GTKAWN7Q');
-        //$test = PluginBlocktypeZotero::get_file_info('GTKAWN7Q');
-        //PluginBlocktypeZotero::get_folder_info('II7IVJ23');
-        //$test = PluginBlocktypeZotero::get_bibbase();
-        $test = PluginBlocktypeZotero::get_folder_content('cs');
-        break;
     case 'login':
         PluginBlocktypeZotero::request_token();
         break;
@@ -44,5 +37,3 @@ switch ($action) {
         $smarty->assign('account', $account);
         $smarty->display('artefact:cloud:account.tpl');
 }
-
-?>

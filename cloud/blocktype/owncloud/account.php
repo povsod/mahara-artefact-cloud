@@ -79,6 +79,3 @@ function consent_submit(Pieform $form, $values) {
     ArtefactTypeCloud::set_user_preferences('owncloud', $USER->get('id'), array('token' => $token));
     redirect(get_config('wwwroot') . 'artefact/cloud/');
 }
-
-
-?>

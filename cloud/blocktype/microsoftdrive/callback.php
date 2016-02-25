@@ -20,7 +20,6 @@ require_once('lib.php');
 
 global $USER;
 $code = param_variable('code', null);
-//print_r($code);
 
 // If there is a code (typically when signing user in) than proccess that code
 // else (typically when signing user out & there is no code returned) do nothing...
@@ -33,5 +32,3 @@ if (!is_null($code)) {
 }
 
 redirect(get_config('wwwroot').'artefact/cloud');
-
-?>

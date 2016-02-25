@@ -19,7 +19,6 @@ require_once(get_config('docroot') . 'artefact/cloud/lib.php');
 require_once('lib.php');
 
 global $USER;
-//$user_id     = param_integer('uid', 0);
 $oauth_token = param_alphanum('oauth_token', null);
 $oauth_verifier = param_alphanum('oauth_verifier', null);
 
@@ -36,5 +35,3 @@ if (isset($oauth_token) && $oauth_token == $token['oauth_token']) {
 }
 
 redirect(get_config('wwwroot').'artefact/cloud');
-
-?>

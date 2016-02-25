@@ -49,11 +49,6 @@ if ($viewid > 0) {
 
 $smarty = smarty();
 
-if (get_config('viewmicroheaders')) {
-    $smarty->assign('microheaders', true);
-    $smarty->assign('microheadertitle', $view->display_title(true, false));
-}
-
 $smarty->assign('id', $id);
 $smarty->assign('type', $type);
 $smarty->assign('viewid', $viewid);

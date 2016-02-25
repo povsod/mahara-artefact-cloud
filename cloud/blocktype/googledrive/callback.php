@@ -32,5 +32,3 @@ if (!is_null($code)) {
 }
 
 redirect(get_config('wwwroot').'artefact/cloud');
-
-?>

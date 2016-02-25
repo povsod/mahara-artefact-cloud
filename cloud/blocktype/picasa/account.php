@@ -38,6 +38,3 @@ switch ($action) {
         $smarty->assign('account', $account);
         $smarty->display('artefact:cloud:account.tpl');
 }
-
-
-?>

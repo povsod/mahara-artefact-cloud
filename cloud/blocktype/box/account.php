@@ -37,5 +37,4 @@ switch ($action) {
         //$smarty->assign('PAGEHEADING', TITLE);
         $smarty->assign('account', $account);
         $smarty->display('artefact:cloud:account.tpl');}
-
-?>
+}
