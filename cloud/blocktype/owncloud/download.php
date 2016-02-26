@@ -69,7 +69,7 @@ else {
     }
     $file = PluginBlocktypeOwncloud::get_file_info($id, $ownerid);
     $content = PluginBlocktypeOwncloud::download_file($id, $ownerid);
-    
+
     header('Pragma: no-cache');
     header('Content-disposition: attachment; filename="' . $file['name'] . '"');
     header('Content-Transfer-Encoding: binary'); 
@@ -127,7 +127,7 @@ function saveform_submit(Pieform $form, $values) {
     insert_record('artefact_file_files', $fileartefact);
     
     // Write file content to local Mahara file repository
-    $content = PluginBlocktypeOwncloud::download_file($file['id'], null, false); 
+    $content = PluginBlocktypeOwncloud::download_file($file['id']); 
     if (!file_exists(get_config('dataroot') . 'artefact/file/originals/' . $artefactid)) {
         mkdir(get_config('dataroot') . 'artefact/file/originals/' . $artefactid, 0777);
     }

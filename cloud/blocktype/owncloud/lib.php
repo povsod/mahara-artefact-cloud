@@ -215,8 +215,10 @@ class PluginBlocktypeOwncloud extends PluginBlocktypeCloud {
         if (!isset($owner) || is_null($owner)) {
             $owner = $USER->get('id');
         }
+        $webdavurl = get_config_plugin('blocktype', 'owncloud', 'webdavurl');
+        $url = parse_url($webdavurl);
         $service = new StdClass();
-        $service->ssl         = true;
+        $service->ssl         = ($url['scheme'] == 'https' ? true : false);
         $service->version     = ''; // API Version
         $service->title       = get_config_plugin('blocktype', 'owncloud', 'servicetitle');
         $service->webdavurl   = get_config_plugin('blocktype', 'owncloud', 'webdavurl');
@@ -723,12 +725,8 @@ class PluginBlocktypeOwncloud extends PluginBlocktypeCloud {
         }
     }
 
-    public function download_file($file_id='/remote.php/webdav/', $owner=null, $fix=true) {
+    public function download_file($file_id='/remote.php/webdav/', $owner=null) {
         global $SESSION;
-        if ($fix) {
-            // Fix: everything except / gets urlencoded
-            $file_id = implode('/', array_map('rawurlencode', explode('/', $file_id)));
-        }
         $consumer = self::get_service_consumer($owner);
         if (isset($consumer->usrprefs['token']) && !empty($consumer->usrprefs['token'])) {
             $webdavurl = parse_url($consumer->webdavurl);

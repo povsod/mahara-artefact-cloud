@@ -43,7 +43,12 @@ if ($viewid > 0) {
 }
 
 
-$smarty = smarty();
+$smarty = smarty(
+    array(),
+    array(),
+    array(),
+    array('sidebars' => false)
+);
 
 $smarty->assign('SERVICE', 'googledrive');
 $smarty->assign('id', $id);

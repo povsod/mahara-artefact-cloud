@@ -37,8 +37,8 @@ else {
 
 // If user edited a page, then return to that page
 $viewid = $USER->get_account_preference('lasteditedview');
-if (isset($viewid) && !empty($viewid)) {
-    $USER->set_account_preference('lasteditedview', null);
+if (isset($viewid) && $viewid > 0) {
+    $USER->set_account_preference('lasteditedview', 0);
     redirect(get_config('wwwroot').'view/blocks.php?id='.$viewid);
 }
 

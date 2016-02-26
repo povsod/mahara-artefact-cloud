@@ -2,9 +2,9 @@
     <h3 class="panel-heading profile-block">
         <span class="user-icon" id="cloudservice_{$service->name}">
             {if $service->subservice}
-            <img src="{theme_url filename="$service->subservice/icon.png" plugin="artefact/cloud/blocktype/$service->name"}" alt="{$service->name}">
+            <img src="{theme_url filename="$service->subservice/icon.png" plugin="artefact/cloud/blocktype/$service->name"}" alt="{$service->name}" width="72">
             {else}
-            <img src="{theme_url filename="images/icon.png" plugin="artefact/cloud/blocktype/$service->name"}" alt="{$service->name}">
+            <img src="{theme_url filename="images/icon.png" plugin="artefact/cloud/blocktype/$service->name"}" alt="{$service->name}" width="72">
             {/if}
         </span>
         <a href="{$service->url}">

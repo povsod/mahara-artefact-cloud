@@ -12,6 +12,6 @@
 defined('INTERNAL') || die();
 
 $config = new StdClass;
-$config->version = 2016022200;
-$config->release = '16.02.0';
+$config->version = 2016022600;
+$config->release = '16.02.1';
 $config->auth    = 'Custom auth, OAuth 2.0 like';

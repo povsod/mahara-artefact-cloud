@@ -26,7 +26,7 @@ if ($viewid > 0) {
     $USER->set_account_preference('lasteditedview', $viewid);
 }
 else {
-    $USER->set_account_preference('lasteditedview', null);
+    $USER->set_account_preference('lasteditedview', 0);
 }
 
 switch ($action) {

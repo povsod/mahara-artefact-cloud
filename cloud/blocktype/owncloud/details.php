@@ -56,11 +56,6 @@ $smarty = smarty(
     array('sidebars' => false)
 );
 
-if (get_config('viewmicroheaders')) {
-    $smarty->assign('microheaders', true);
-    $smarty->assign('microheadertitle', $view->display_title(true, false));
-}
-
 $smarty->assign('SERVICE', 'owncloud');
 $smarty->assign('id', $id);
 $smarty->assign('type', $type);
