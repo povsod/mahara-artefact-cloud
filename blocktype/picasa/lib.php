@@ -37,7 +37,11 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
         $ownerid = $view->get('owner');
 
         $selected = (!empty($configdata['artefacts']) ? $configdata['artefacts'] : array());
-        $display  = (!empty($configdata['display']) ? $configdata['display'] : 'list');
+        $display  = (
+            !empty($configdata['display']) && $configdata['display'] === 'embed'
+            ? 'embed'
+            : 'list'
+        );
         $size     = (!empty($configdata['size']) ? $configdata['size'] : '512');
         $frame     = (!empty($configdata['frame']) ? $configdata['frame'] : false);
         $slideshow = (!empty($configdata['slideshow']) ? $configdata['slideshow'] : false);
@@ -68,7 +72,6 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
                 $smarty->assign('embed', $html);
                 break;
             case 'list':
-            default:
                 if (!empty($selected)) {
                     list($type, $item) = explode('-', $selected[0]);
                     if ($type == 'file') {
@@ -85,6 +88,10 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
                 $data = self::get_filelist($folder, $selected, $ownerid);
                 $smarty->assign('folders', $data['folders']);
                 $smarty->assign('files', $data['files']);
+                break;
+            default:
+                log_warn('Invalid display method: {$display}');
+                return false;
         }
         $smarty->assign('viewid', $viewid);
         $smarty->assign('SERVICE', 'picasa');

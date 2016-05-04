@@ -41,7 +41,11 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
         $ownerid = $view->get('owner');
 
         $selected = (!empty($configdata['artefacts']) ? $configdata['artefacts'] : array());
-        $display  = (!empty($configdata['display']) ? $configdata['display'] : 'list');
+        $display  = (
+            !empty($configdata['display']) && $configdata['display'] === 'embed'
+            ? 'embed'
+            : 'list'
+        );
         $width    = (!empty($configdata['width']) ? $configdata['width'] : 480);
         $height   = (!empty($configdata['height']) ? $configdata['height'] : 360);
         
@@ -59,7 +63,6 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
                 $smarty->assign('embed', $html);
                 break;
             case 'list':
-            default:
                 if (!empty($selected)) {
                     $file = self::get_file_info($selected[0]);
                     $folder = $file['parent_id'];
@@ -70,6 +73,10 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
                 $data = self::get_filelist($folder, $selected, $ownerid);
                 $smarty->assign('folders', $data['folders']);
                 $smarty->assign('files', $data['files']);
+                break;
+            default:
+                log_warn('Invalid display method: {$display}');
+                return false;
         }
         $smarty->assign('viewid', $viewid);
         return $smarty->fetch('artefact:cloud:' . $display . '.tpl');
