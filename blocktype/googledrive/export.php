@@ -157,8 +157,8 @@ function exportform_submit(Pieform $form, $values) {
     $extension = mime2extension($values['fileformat']);
 
     header('Pragma: no-cache');
-    header('Content-disposition: attachment; filename="' . $file['name'] . '.' . $extension . '"');
-    header('Content-Transfer-Encoding: binary'); 
+    header('Content-disposition: attachment; filename="' . str_replace('"', '\"', $file['name']) . '.' . $extension . '"');
+    header('Content-Transfer-Encoding: binary');
     header('Content-type: application/octet-stream');
     header('Refresh:0;url=' . get_config('wwwroot') . 'artefact/cloud/blocktype/googledrive/manage.php');
     echo $content;

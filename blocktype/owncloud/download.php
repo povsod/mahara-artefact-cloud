@@ -71,8 +71,8 @@ else {
     $content = PluginBlocktypeOwncloud::download_file($id, $ownerid);
 
     header('Pragma: no-cache');
-    header('Content-disposition: attachment; filename="' . $file['name'] . '"');
-    header('Content-Transfer-Encoding: binary'); 
+    header('Content-disposition: attachment; filename="' . str_replace('"', '\"', $file['name']) . '"');
+    header('Content-Transfer-Encoding: binary');
     header('Content-type: application/octet-stream');
     echo $content;
 }
