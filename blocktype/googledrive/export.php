@@ -71,7 +71,8 @@ if ($save) {
                 //'size'    => 8,                
                 'rules'   => array(
                     'required' => true
-                )
+                ),
+                'collapseifoneoption' => false,
             ),
             'submit' => array(
                 'type' => 'submitcancel',
