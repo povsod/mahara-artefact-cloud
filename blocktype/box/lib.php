@@ -181,11 +181,14 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
         // Folder and file IDs (and other values) are returned as JSON/jQuery serialized string.
         // We have to parse that string and urldecode it (to correctly convert square brackets)
         // in order to get cloud folder and file IDs - they are stored in $artefacts array.
-        parse_str(urldecode($values['boxfiles']));
-        if (!isset($artefacts) || empty($artefacts)) {
+        parse_str(urldecode($values['boxfiles']), $params);
+        if (!isset($params['artefacts']) || empty($params['artefacts'])) {
             $artefacts = array();
         }
-        
+        else {
+            $artefacts = $params['artefacts'];
+        }
+
         $values = array(
             'title'     => $values['title'],
             'artefacts' => $artefacts,
