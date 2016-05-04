@@ -191,6 +191,17 @@ require_once(get_config('docroot') . 'blocktype/lib.php');
 
 abstract class PluginBlocktypeCloud extends PluginBlocktype {
 
+    /**
+     * The cloud blocks use the access token of the user who
+     * owns the page. This means they don't work with pages
+     * that don't have an owner (group, institution, site)
+     *
+     * @param View $view Allow it on this view?
+     */
+    public static function allowed_in_view(View $view) {
+        return $view->get('owner') != null;
+    }
+
     /*
      * Method that returns data about cloud,
      * needed in 'index.php' (cloud list).
