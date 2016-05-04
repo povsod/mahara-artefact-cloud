@@ -10,6 +10,7 @@
  */
 
 defined('INTERNAL') || die();
+require_once(get_config('docroot') . 'artefact/lib.php');
 
 class PluginArtefactCloud extends PluginArtefact {
     
