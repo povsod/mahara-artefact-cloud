@@ -32,6 +32,14 @@ if ($viewid > 0) {
        throw new AccessDeniedException();
     }
 }
+else {
+    // If no view id was provided, we'll use the current user's token.
+    // If you're logged out, obviously you have no token, so therefore
+    // we shouldn't even try.
+    if (!$USER->get('id')) {
+        throw new AccessDeniedException();
+    }
+}
 
 $data = array();
 if ($type == 'folder') {
