@@ -105,6 +105,7 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
     }
 
     public static function instance_config_form($instance) {
+        global $USER;
         $instanceid = $instance->get('id');
         $configdata = $instance->get('configdata');
         safe_require('artefact', 'cloud');
@@ -124,7 +125,7 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
                 'zoteroisconnect' => array(
                     'type' => 'cancel',
                     'value' => get_string('revokeconnection', 'blocktype.cloud/zotero'),
-                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/zotero/account.php?action=logout',
+                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/zotero/account.php?action=logout&sesskey=' . $USER->get('sesskey'),
                 ),
                 'zoterorefs' => array(
                     'type'     => 'datatables',
@@ -163,7 +164,7 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
                 'zoteroisconnect' => array(
                     'type' => 'cancel',
                     'value' => get_string('connecttozotero', 'blocktype.cloud/zotero'),
-                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/zotero/account.php?action=login&view=' . $viewid,
+                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/zotero/account.php?action=login&view=' . $viewid . '&sesskey=' . $USER->get('sesskey'),
                 ),
             );
         }

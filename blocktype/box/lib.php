@@ -79,6 +79,7 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
     }
 
     public static function instance_config_form($instance) {
+        global $USER;
         $instanceid = $instance->get('id');
         $configdata = $instance->get('configdata');
         $allowed = (!empty($configdata['allowed']) ? $configdata['allowed'] : array());
@@ -99,7 +100,7 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
                 'boxisconnect' => array(
                     'type' => 'cancel',
                     'value' => get_string('revokeconnection', 'blocktype.cloud/box'),
-                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/box/account.php?action=logout',
+                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/box/account.php?action=logout&sesskey=' . $USER->get('sesskey'),
                 ),
                 'boxpath' => array(
                     'type'  => 'hidden',
@@ -163,7 +164,7 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
                 'boxisconnect' => array(
                     'type' => 'cancel',
                     'value' => get_string('connecttobox', 'blocktype.cloud/box'),
-                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/box/account.php?action=login&view=' . $viewid,
+                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/box/account.php?action=login&view=' . $viewid . '&sesskey=' . $USER->get('sesskey'),
                 ),
             );
         }

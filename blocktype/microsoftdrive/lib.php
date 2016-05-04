@@ -73,6 +73,7 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
     }
 
     public static function instance_config_form($instance) {
+        global $USER;
         $instanceid = $instance->get('id');
         $configdata = $instance->get('configdata');
         $allowed = (!empty($configdata['allowed']) ? $configdata['allowed'] : array());
@@ -93,7 +94,7 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
                 'microsoftdriveisconnect' => array(
                     'type' => 'cancel',
                     'value' => get_string('revokeconnection', 'blocktype.cloud/microsoftdrive'),
-                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/microsoftdrive/account.php?action=logout',
+                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/microsoftdrive/account.php?action=logout&sesskey=' . $USER->get('sesskey'),
                 ),
                 'microsoftdrivefiles' => array(
                     'type'     => 'datatables',
@@ -131,7 +132,7 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
                 'microsoftdriveisconnect' => array(
                     'type' => 'cancel',
                     'value' => get_string('connecttomicrosoftdrive', 'blocktype.cloud/microsoftdrive'),
-                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/microsoftdrive/account.php?action=login&view=' . $viewid,
+                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/microsoftdrive/account.php?action=login&view=' . $viewid . '&sesskey=' . $USER->get('sesskey'),
                 ),
             );
         }

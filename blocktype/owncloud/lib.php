@@ -58,6 +58,7 @@ class PluginBlocktypeOwncloud extends PluginBlocktypeCloud {
     }
 
     public static function instance_config_form($instance) {
+        global $USER;
         $instanceid = $instance->get('id');
         $configdata = $instance->get('configdata');
         $allowed = (!empty($configdata['allowed']) ? $configdata['allowed'] : array());
@@ -82,7 +83,7 @@ class PluginBlocktypeOwncloud extends PluginBlocktypeCloud {
                     'type' => 'cancel',
                     'value' => get_string('revokeconnection', 'blocktype.cloud/owncloud') . ' • '
                              . get_config_plugin('blocktype', 'owncloud', 'servicetitle'),
-                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/owncloud/account.php?action=logout',
+                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/owncloud/account.php?action=logout&sesskey=' . $USER->get('sesskey'),
                 ),
                 'owncloudfiles' => array(
                     'type'     => 'datatables',
@@ -109,7 +110,7 @@ class PluginBlocktypeOwncloud extends PluginBlocktypeCloud {
                 'owncloudisconnect' => array(
                     'type' => 'cancel',
                     'value' => get_string('connecttoowncloud', 'blocktype.cloud/owncloud'),
-                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/owncloud/account.php?action=login&view=' . $viewid,
+                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/owncloud/account.php?action=login&view=' . $viewid . '&sesskey=' . $USER->get('sesskey'),
                 ),
             );
         }

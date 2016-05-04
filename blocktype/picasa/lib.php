@@ -96,6 +96,7 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
     }
 
     public static function instance_config_form($instance) {
+        global $USER;
         $instanceid = $instance->get('id');
         $configdata = $instance->get('configdata');
         $allowed = (!empty($configdata['allowed']) ? $configdata['allowed'] : array());
@@ -116,7 +117,7 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
                 'picasaisconnect' => array(
                     'type' => 'cancel',
                     'value' => get_string('revokeconnection', 'blocktype.cloud/picasa'),
-                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/picasa/account.php?action=logout',
+                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/picasa/account.php?action=logout&sesskey=' . $USER->get('sesskey'),
                 ),
                 'picasafiles' => array(
                     'type'     => 'datatables',
@@ -189,7 +190,7 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
                 'picasaisconnect' => array(
                     'type' => 'cancel',
                     'value' => get_string('connecttopicasa', 'blocktype.cloud/picasa'),
-                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/pcasa/account.php?action=login&view=' . $viewid,
+                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/pcasa/account.php?action=login&view=' . $viewid . '&sesskey=' . $USER->get('sesskey'),
                 ),
             );
         }

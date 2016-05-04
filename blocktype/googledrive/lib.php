@@ -80,6 +80,7 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
     }
 
     public static function instance_config_form($instance) {
+        global $USER;
         $instanceid = $instance->get('id');
         $configdata = $instance->get('configdata');
         $allowed = (!empty($configdata['allowed']) ? $configdata['allowed'] : array());
@@ -100,7 +101,7 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
                 'googledriveisconnect' => array(
                     'type' => 'cancel',
                     'value' => get_string('revokeconnection', 'blocktype.cloud/googledrive'),
-                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/googledrive/account.php?action=logout',
+                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/googledrive/account.php?action=logout&sesskey=' . $USER->get('sesskey'),
                 ),
                 'googledrivefiles' => array(
                     'type'     => 'datatables',
@@ -170,7 +171,7 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
                 'googledriveisconnect' => array(
                     'type' => 'cancel',
                     'value' => get_string('connecttogoogledrive', 'blocktype.cloud/googledrive'),
-                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/googledrive/account.php?action=login&view=' . $viewid,
+                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/googledrive/account.php?action=login&view=' . $viewid . '&sesskey=' . $USER->get('sesskey'),
                 ),
             );
         }

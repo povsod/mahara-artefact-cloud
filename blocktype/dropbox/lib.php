@@ -60,6 +60,7 @@ class PluginBlocktypeDropbox extends PluginBlocktypeCloud {
     }
 
     public static function instance_config_form($instance) {
+        global $USER;
         $instanceid = $instance->get('id');
         $configdata = $instance->get('configdata');
         safe_require('artefact', 'cloud');
@@ -79,7 +80,7 @@ class PluginBlocktypeDropbox extends PluginBlocktypeCloud {
                 'dropboxisconnect' => array(
                     'type' => 'cancel',
                     'value' => get_string('revokeconnection', 'blocktype.cloud/dropbox'),
-                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/dropbox/account.php?action=logout',
+                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/dropbox/account.php?action=logout&sesskey=' . $USER->get('sesskey'),
                 ),
                 'dropboxfiles' => array(
                     'type'     => 'datatables',
@@ -106,7 +107,7 @@ class PluginBlocktypeDropbox extends PluginBlocktypeCloud {
                 'dropboxisconnect' => array(
                     'type' => 'cancel',
                     'value' => get_string('connecttodropbox', 'blocktype.cloud/dropbox'),
-                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/dropbox/account.php?action=login&view=' . $viewid,
+                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/dropbox/account.php?action=login&view=' . $viewid . '&sesskey=' . $USER->get('sesskey'),
                 ),
             );
         }
