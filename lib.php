@@ -267,19 +267,31 @@ abstract class PluginBlocktypeCloud extends PluginBlocktype {
      * @return mixed FALSE on failure, ID of new artefact if successful
      */
     public static function download_to_artefact($fileid, $destfolderid) {
+        $file = static::get_file_info($fileid);
+        $file['content'] = static::download_file($file['id']);
+        return static::save_to_artefact($file, $destfolderid);
+    }
+
+    /**
+     * Saves the specified remote file into a File artefact in the current
+     * user's file area.
+     *
+     * @param string $fileid Remote ID of file to download
+     * @param int $destfolderid
+     * @return mixed FALSE on failure, ID of new artefact if successful
+     */
+    protected static function save_to_artefact($file, $destfolderid) {
         global $USER, $CFG, $SESSION;
 
         require_once($CFG->docroot . '/lib/uploadmanager.php');
         safe_require('artefact', 'file');
 
-        $file = static::get_file_info($fileid);
-
         // Write file content to local Mahara file repository
         $tempdir = get_config('dataroot') . 'artefact/file/temp';
+        check_dir_exists($tempdir);
         $tempfile = tempnam($tempdir, 'cloud.');
 
-        $content = static::download_file($file['id']);
-        file_put_contents($tempfile, $content);
+        file_put_contents($tempfile, $file['content']);
 
         $error = mahara_clam_scan_file($tempfile);
         if ($error) {

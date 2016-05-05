@@ -1071,6 +1071,15 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
         }
     }
 
+    public function export_to_artefact($fileid, $destfolderid, $fileformat) {
+        $file = static::get_file_info($fileid);
+        $file['content'] = static::export_file($file['export'][$fileformat]);
+        $extension = mime2extension($fileformat);
+        $file['name'] = "{$file['name']}.{$extension}";
+        $file['bytes'] = strlen($file['content']);
+        return static::save_to_artefact($file, $destfolderid);
+    }
+
     /*
      * Export and save native GoogleDocs file into selected file format (MIME type).
      *
@@ -1150,4 +1159,80 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
         }
     }
 
+}
+
+function mime2extension($mimeType) {
+    $extension = '';
+    switch ($mimeType) {
+        case 'application/zip':
+            $extension = 'zip';
+            break;
+        case 'application/msword':
+            $extension = 'doc';
+            break;
+        case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+            $extension = 'docx';
+            break;
+        case 'application/pdf':
+            $extension = 'pdf';
+            break;
+        case 'application/rtf':
+            $extension = 'rtf';
+            break;
+        case 'application/vnd.ms-excel':
+            $extension = 'xls';
+            break;
+        case 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
+            $extension = 'xlsx';
+            break;
+        case 'application/vnd.ms-powerpoint':
+            $extension = 'ppt';
+            break;
+        case 'application/vnd.openxmlformats-officedocument.presentationml.presentation':
+            $extension = 'pptx';
+            break;
+        case 'application/vnd.oasis.opendocument.text':
+        case 'application/x-vnd.oasis.opendocument.text':
+            $extension = 'odt';
+            break;
+        case 'application/vnd.oasis.opendocument.spreadsheet':
+        case 'application/x-vnd.oasis.opendocument.spreadsheet':
+            $extension = 'ods';
+            break;
+        case 'application/vnd.oasis.opendocument.presentation':
+        case 'application/x-vnd.oasis.opendocument.presentation':
+            $extension = 'odp';
+            break;
+        case 'image/jpeg':
+        case 'image/jpg':
+        case 'application/jpg':
+        case 'application/x-jpg':
+        case 'image/vnd.swiftview-jpeg':
+        case 'image/x-xbitmap':
+            $extension = 'jpg';
+            break;
+        case 'image/png':
+        case 'application/png':
+        case 'application/x-png':
+            $extension = 'png';
+            break;
+        case 'image/svg':
+        case 'image/svg+xml':
+        case 'image/svg-xml':
+        case 'image/vnd.adobe.svg+xml':
+        case 'text/xml-svg':
+            $extension = 'svg';
+            break;
+        case 'text/html':
+            $extension = 'html';
+            break;
+        case 'text/plain':
+        case 'application/txt':
+            $extension = 'txt';
+            break;
+        default:
+            // Last try, see if it's in the mimetypes table
+            $extension = get_field('artefact_file_mime_types', 'description', 'mimetype', $mimeType);
+    }
+    return $extension;
 }

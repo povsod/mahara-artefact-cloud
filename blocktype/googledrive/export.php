@@ -171,81 +171,12 @@ function exportform_submit(Pieform $form, $values) {
 
 
 function saveform_submit(Pieform $form, $values) {
-    PluginBlocktypeGoogledrive::download_to_artefact(
+
+    PluginBlocktypeGoogledrive::export_to_artefact(
         $values['fileid'],
-        $values['folderid']
+        $values['folderid'],
+        $values['fileformat']
     );
 
     redirect(get_config('wwwroot') . 'artefact/cloud/blocktype/googledrive/manage.php');
-}
-
-
-function mime2extension($mimeType) {
-    $extension = '';
-    switch ($mimeType) {
-        case 'application/msword':
-            $extension = 'doc';
-            break;
-        case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
-            $extension = 'docx';
-            break;
-        case 'application/pdf':
-            $extension = 'pdf';
-            break;
-        case 'application/rtf':
-            $extension = 'rtf';
-            break;
-        case 'application/vnd.ms-excel':
-            $extension = 'xls';
-            break;
-        case 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
-            $extension = 'xlsx';
-            break;
-        case 'application/vnd.ms-powerpoint':
-            $extension = 'ppt';
-            break;
-        case 'application/vnd.openxmlformats-officedocument.presentationml.presentation':
-            $extension = 'pptx';
-            break;
-        case 'application/vnd.oasis.opendocument.text':
-        case 'application/x-vnd.oasis.opendocument.text':
-            $extension = 'odt';
-            break;
-        case 'application/vnd.oasis.opendocument.spreadsheet':
-        case 'application/x-vnd.oasis.opendocument.spreadsheet':
-            $extension = 'ods';
-            break;
-        case 'application/vnd.oasis.opendocument.presentation':
-        case 'application/x-vnd.oasis.opendocument.presentation':
-            $extension = 'odp';
-            break;
-        case 'image/jpeg':
-        case 'image/jpg':
-        case 'application/jpg':
-        case 'application/x-jpg':
-        case 'image/vnd.swiftview-jpeg':
-        case 'image/x-xbitmap':
-            $extension = 'jpg';
-            break;
-        case 'image/png':
-        case 'application/png':
-        case 'application/x-png':
-            $extension = 'png';
-            break;
-        case 'image/svg':
-        case 'image/svg+xml':
-        case 'image/svg-xml':
-        case 'image/vnd.adobe.svg+xml':
-        case 'text/xml-svg':
-            $extension = 'svg';
-            break;
-        case 'text/html':
-            $extension = 'html';
-            break;
-        case 'text/plain':
-        case 'application/txt':
-            $extension = 'txt';
-            break;
-    }
-    return $extension;
 }
