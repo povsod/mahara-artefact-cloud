@@ -258,6 +258,68 @@ abstract class PluginBlocktypeCloud extends PluginBlocktype {
      */
     public abstract function download_file($file_id);
 
+    /**
+     * Saves the specified remote file into a File artefact in the current
+     * user's file area.
+     *
+     * @param string $fileid Remote ID of file to download
+     * @param int $destfolderid
+     * @return mixed FALSE on failure, ID of new artefact if successful
+     */
+    public static function download_to_artefact($fileid, $destfolderid) {
+        global $USER, $CFG, $SESSION;
+
+        require_once($CFG->docroot . '/lib/uploadmanager.php');
+        safe_require('artefact', 'file');
+
+        $file = static::get_file_info($fileid);
+
+        // Write file content to local Mahara file repository
+        $tempdir = get_config('dataroot') . 'artefact/file/temp';
+        $tempfile = tempnam($tempdir, 'cloud.');
+
+        $content = static::download_file($file['id']);
+        file_put_contents($tempfile, $content);
+
+        $error = mahara_clam_scan_file($tempfile);
+        if ($error) {
+            $SESSION->add_error_msg($error);
+            @unlink($tempfile);
+            return false;
+        }
+
+        $data = (object) array(
+            'parent'       => ($destfolderid > 0 ? $destfolderid : null),
+            'owner'        => $USER->get('id'),
+            'title'        => $file['name'],
+            'author'       => $USER->get('id'),
+            'oldextension' => pathinfo($file['name'], PATHINFO_EXTENSION),
+            'size'         => $file['bytes']
+        );
+        $null = null; // HACK to workaround by-reference parameter
+        try {
+            $artefactid = ArtefactTypeFile::save_file(
+                $tempfile,
+                $data,
+                $null,
+                true
+            );
+        }
+        catch (QuotaExceededException $e) {
+            $SESSION->add_error_msg(get_string('uploadexceedsquota', 'artefact.file'));
+            @unlink($tempfile);
+            return false;
+        }
+
+        if (!$artefactid) {
+            $SESSION->add_error_msg("Error: file not saved.");
+            @unlink($tempfile);
+            return false;
+        }
+
+        return $artefactid;
+    }
+
     /*
      * Method for embedding file (on Cloud Service)
      */

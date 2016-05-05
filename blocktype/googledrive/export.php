@@ -171,106 +171,11 @@ function exportform_submit(Pieform $form, $values) {
 
 
 function saveform_submit(Pieform $form, $values) {
-    global $USER;
-    
-    $file = PluginBlocktypeGoogledrive::get_file_info($values['fileid']);
-    $content = PluginBlocktypeGoogledrive::export_file($file['export'][$values['fileformat']]);
-    // Set correct extension...
-    $extension = mime2extension($values['fileformat']);
-    // Determine (by file extension) if file is an image file or not
-    if (in_array($extension, array('bmp', 'gif', 'jpg', 'jpeg', 'png'))) {
-        $image = true;
-    }
-    else {
-        $image = false;
-    }
-    
-    // Insert file data into 'artefact' table...
-    $time = db_format_timestamp(time());
-    $artefact = (object) array(
-        'artefacttype' => ($image ? 'image' : 'file'),
-        'parent'       => ($values['folderid'] > 0 ? $values['folderid'] : null),
-        'owner'        => $USER->get('id'),
-        'ctime'        => $time,
-        'mtime'        => $time,
-        'atime'        => $time,
-        'title'        => $file['name'] . '.' . $extension,
-        'author'       => $USER->get('id')
+    PluginBlocktypeGoogledrive::download_to_artefact(
+        $values['fileid'],
+        $values['folderid']
     );
-    $artefactid = insert_record('artefact', $artefact, 'id', true);
-    
-    // Insert file data into 'artefact_file_files' table...
-    $mimetypes = get_records_sql_assoc('SELECT m.description, m.mimetype FROM {artefact_file_mime_types} m ORDER BY description', array());
-    $filetype = 'application/octet-stream';
-    if (isset($mimetypes[$extension])) {
-        $filetype = $mimetypes[$extension]->mimetype;
-    }
-    elseif ($extension == 'doc') {
-        $filetype = 'application/msword';
-    }
-    elseif ($extension == 'docx') {
-        $filetype = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-    }
-    elseif ($extension == 'jpg') {
-        $filetype = 'image/jpeg';
-    }
-    elseif ($extension == 'pps') {
-        $filetype = 'application/vnd.ms-powerpoint';
-    }
-    elseif ($extension == 'ppt') {
-        $filetype = 'application/vnd.ms-powerpoint';
-    }
-    elseif ($extension == 'ppsx') {
-        $filetype = 'application/vnd.openxmlformats-officedocument.presentationml.slideshow';
-    }
-    elseif ($extension == 'pptx') {
-        $filetype = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
-    }
-    elseif ($extension == 'xls') {
-        $filetype = 'application/vnd.ms-excel';
-    }
-    elseif ($extension == 'xlsx') {
-        $filetype = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-    }
-    elseif ($extension == 'odt') {
-        $filetype = 'application/vnd.oasis.opendocument.text';
-    }
-    elseif ($extension == 'ods') {
-        $filetype = 'application/vnd.oasis.opendocument.spreadsheet';
-    }
-    elseif ($extension == 'odp') {
-        $filetype = 'application/vnd.oasis.opendocument.presentation';
-    }
-    
-    $fileartefact = (object) array(
-        'artefact'     => $artefactid,
-        'size'         => strlen($content), //$file['bytes'],
-        'oldextension' => $extension,
-        'fileid'       => $artefactid,
-        'filetype'     => $filetype,
-    );
-    insert_record('artefact_file_files', $fileartefact);
-    
-    // Write file content to local Mahara file repository
-    if (!file_exists(get_config('dataroot') . 'artefact/file/originals/' . $artefactid)) {
-        mkdir(get_config('dataroot') . 'artefact/file/originals/' . $artefactid, 0777);
-    }
-    $localfile = get_config('dataroot') . 'artefact/file/originals/' . $artefactid . '/' . $artefactid;
-    file_put_contents($localfile, $content);
-    
-    // If file is an image file, than
-    // insert image data into 'artefact_file_image' table...
-    if ($image) {
-        list($width, $height, $type, $attr) = getimagesize($localfile);
-        $imgartefact = (object) array(
-            'artefact' => $artefactid,
-            'width'    => $width,
-            'height'   => $height,
-        );
-        insert_record('artefact_file_image', $imgartefact);
-    }
 
-    // Redirect
     redirect(get_config('wwwroot') . 'artefact/cloud/blocktype/googledrive/manage.php');
 }
 
