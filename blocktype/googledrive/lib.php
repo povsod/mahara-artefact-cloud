@@ -29,10 +29,6 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
         return array('external');
     }
 
-    public static function get_instance_config_javascript() {
-        return array('js/configform.js');
-    }
-
     public static function render_instance(BlockInstance $instance, $editing=false) {
         $configdata = $instance->get('configdata');
         $viewid     = $instance->get('view');
