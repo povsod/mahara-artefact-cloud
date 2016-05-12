@@ -1,4 +1,8 @@
-For this plugin to work correctly (work at all) you need to edit htdocs/view/blocks.php core Mahara file.
+For complete instructions see the "Installation" section of README.md.
+
+You can install this plugin as a standard Mahara artefact plugin, with one
+important exception: For this plugin to work correctly (work at all) you need 
+to edit the htdocs/view/blocks.php core Mahara file.
 
 You have to add a string to javascript array around line 152
 (look for $javascript = array_merge($javascript, $blocktype_js['jsfiles']);),
@@ -11,3 +15,10 @@ if (class_exists('PluginArtefactCloud')) {
                                 'artefact/cloud/lib/datatables/js/dataTables.bootstrap.min.js');
     $javascript = array_merge($javascript, $blocktype_cloud_js);
 }
+
+Alternately, you can apply the patch file "htdocs_view_blocks.patch"
+
+    cd /path/to/your/mahara
+    patch -p0 < htdocs/artefact/cloud/htdocs_view_blocks.patch
+
+If the plugin stops working after a Mahara upgrade, you may need to reapply the patch.

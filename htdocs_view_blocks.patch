@@ -1,0 +1,16 @@
+diff --git htdocs/view/blocks.php htdocs/view/blocks.php
+index 58ebde9..b96066f 100644
+--- htdocs/view/blocks.php
++++ htdocs/view/blocks.php
+@@ -150,6 +150,11 @@ $javascript = array('views', 'tinymce', 'paginator', 'js/jquery/jquery-ui/js/jqu
+                     'lib/pieforms/static/core/pieforms.js','js/jquery/modernizr.custom.js');
+ $blocktype_js = $view->get_all_blocktype_javascript();
+ $javascript = array_merge($javascript, $blocktype_js['jsfiles']);
++if (class_exists('PluginArtefactCloud')) {
++    $blocktype_cloud_js = array('artefact/cloud/lib/datatables/js/jquery.dataTables.min.js',
++                                'artefact/cloud/lib/datatables/js/dataTables.bootstrap.min.js');
++    $javascript = array_merge($javascript, $blocktype_cloud_js);
++}
+ if (is_plugin_active('externalvideo')) {
+     $javascript = array_merge($javascript, array((is_https() ? 'https:' : 'http:') . '//cdn.embedly.com/widgets/platform.js'));
+ }
