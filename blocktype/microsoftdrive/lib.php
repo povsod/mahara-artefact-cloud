@@ -182,7 +182,7 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
         $elements = array();
         $elements['applicationdesc'] = array(
             'type'  => 'html',
-            'value' => get_string('applicationdesc', 'blocktype.cloud/microsoftdrive', '<a href="https://account.live.com/developers/applications" target="_blank">', '</a>'),
+            'value' => get_string('applicationdesc', 'blocktype.cloud/microsoftdrive', '<a href="https://account.live.com/developers/applications">', '</a>'),
         );
         $elements['basicinformation'] = array(
             'type' => 'fieldset',

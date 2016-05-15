@@ -150,7 +150,7 @@ class PluginBlocktypeDropbox extends PluginBlocktypeCloud {
         $elements = array();
         $elements['applicationdesc'] = array(
             'type'  => 'html',
-            'value' => get_string('applicationdesc', 'blocktype.cloud/dropbox', '<a href="https://www.dropbox.com/developers/apps" target="_blank">', '</a>'),
+            'value' => get_string('applicationdesc', 'blocktype.cloud/dropbox', '<a href="https://www.dropbox.com/developers/apps">', '</a>'),
         );
         $elements['applicationgeneral'] = array(
             'type' => 'fieldset',

@@ -245,7 +245,7 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
         $elements = array();
         $elements['applicationdesc'] = array(
             'type'  => 'html',
-            'value' => get_string('applicationdesc', 'blocktype.cloud/picasa', '<a href="https://console.cloud.google.com/apis/credentials" target="_blank">', '</a>'),
+            'value' => get_string('applicationdesc', 'blocktype.cloud/picasa', '<a href="https://console.cloud.google.com/apis/credentials">', '</a>'),
         );
         $elements['webappsclientid'] = array(
             'type' => 'fieldset',
@@ -1258,7 +1258,7 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
             else {
                 $slimbox2attr = null;
             }
-            $html .= '<a rel="' . $slimbox2attr . '" href="' . $previewurl . '" title="' . $photoinfo['name'] . '" target="_blank">';
+            $html .= '<a rel="' . $slimbox2attr . '" href="' . $previewurl . '" title="' . $photoinfo['name'] . '">';
             $html .= '<img src="' . $photourl . '" alt="' . $photoinfo['name'] . '" title="' . $photoinfo['name'] . '"';
             if ($options['frame']) {
                 $html .= ' class="frame">';

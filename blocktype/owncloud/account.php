@@ -60,7 +60,7 @@ switch ($action) {
         $smarty->assign('SUBSERVICE', $subservice);
         $smarty->assign('sitename', get_config('sitename'));
         $smarty->assign('servicename', get_string('servicename', 'blocktype.cloud/owncloud'));
-        $smarty->assign('instructions', get_string('AAIlogin', 'blocktype.cloud/owncloud', '<a href="'.$link.'" target="_blank">', '</a>'));
+        $smarty->assign('instructions', get_string('AAIlogin', 'blocktype.cloud/owncloud', '<a href="'.$link.'">', '</a>'));
         $smarty->assign('form', $consentform);
         $smarty->display('artefact:cloud:consent.tpl');
         break;

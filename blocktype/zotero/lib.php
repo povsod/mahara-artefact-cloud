@@ -208,7 +208,7 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
         $elements = array();
         $elements['applicationdesc'] = array(
             'type'  => 'html',
-            'value' => get_string('applicationdesc', 'blocktype.cloud/zotero', '<a href="http://www.zotero.org/oauth/apps" target="_blank">', '</a>'),
+            'value' => get_string('applicationdesc', 'blocktype.cloud/zotero', '<a href="http://www.zotero.org/oauth/apps">', '</a>'),
         );
         $elements['applicationgeneral'] = array(
             'type' => 'fieldset',

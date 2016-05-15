@@ -217,7 +217,7 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
         $elements = array();
         $elements['applicationdesc'] = array(
             'type'  => 'html',
-            'value' => get_string('applicationdesc', 'blocktype.cloud/box', '<a href="https://www.box.com/developers/services" target="_blank">', '</a>'),
+            'value' => get_string('applicationdesc', 'blocktype.cloud/box', '<a href="https://www.box.com/developers/services">', '</a>'),
         );
         $elements['applicationgeneral'] = array(
             'type' => 'fieldset',

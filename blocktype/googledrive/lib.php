@@ -222,7 +222,7 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
         $elements = array();
         $elements['applicationdesc'] = array(
             'type'  => 'html',
-            'value' => get_string('applicationdesc', 'blocktype.cloud/googledrive', '<a href="https://console.cloud.google.com/apis/credentials" target="_blank">', '</a>'),
+            'value' => get_string('applicationdesc', 'blocktype.cloud/googledrive', '<a href="https://console.cloud.google.com/apis/credentials">', '</a>'),
         );
         $elements['webappsclientid'] = array(
             'type' => 'fieldset',
