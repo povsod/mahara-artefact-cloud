@@ -24,7 +24,7 @@ function xmldb_artefact_cloud_upgrade($oldversion=0) {
     $info  = get_config('wwwroot') . 'artefact/cloud/INSTALL.txt';
 
     if (!$fhandle = fopen($fname, 'r')) {
-        $SESSION->add_error_msg('Cannot open file "' . $fname . '". Please <a href="' . $info . '" target="_blank">update this file</a> manually.', false);
+        $SESSION->add_error_msg('Cannot open file "' . $fname . '". Please <a href="' . $info . '">update this file</a> manually.', false);
     }
     $content = fread($fhandle, filesize($fname));
 
@@ -44,7 +44,7 @@ function xmldb_artefact_cloud_upgrade($oldversion=0) {
 
     $fhandle = fopen($fname, 'w');
     if (fwrite($fhandle, $content) === FALSE) {
-        $SESSION->add_error_msg('Cannot write to file "' . $fname . '". Please <a href="' . $info . '" target="_blank">update this file</a> manually.', false);
+        $SESSION->add_error_msg('Cannot write to file "' . $fname . '". Please <a href="' . $info . '">update this file</a> manually.', false);
     }
     fclose($fhandle);
 

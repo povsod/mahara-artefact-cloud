@@ -82,3 +82,4 @@ $string['application/vnd.oasis.opendocument.presentation'] = 'OpenDocument Prese
 $string['application/x-vnd.oasis.opendocument.presentation'] = 'OpenDocument Presentation';
 $string['application/vnd.ms-powerpoint'] = 'Microsoft PowerPoint 97-2003';
 $string['application/vnd.openxmlformats-officedocument.presentationml.presentation'] = 'Microsoft PowerPoint';
+$string['application/zip'] = 'ZIP archive';

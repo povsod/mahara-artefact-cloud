@@ -50,8 +50,8 @@ $filename = $prefix . '_' . $format . '.' . $citation[$format]['ext'];
 $content = PluginBlocktypeZotero::export_citation($id, $type, $format, $tag);
     
 header('Pragma: no-cache');
-header('Content-Disposition: attachment; filename="' . $filename . '"');
-header('Content-Transfer-Encoding: binary'); 
+header('Content-disposition: attachment; filename="' . str_replace('"', '\"', $filename) . '"');
+header('Content-Transfer-Encoding: binary');
 header('Content-Type: ' . $citation[$format]['type']);
 echo $content;
 exit;

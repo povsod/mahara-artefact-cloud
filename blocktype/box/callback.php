@@ -10,7 +10,6 @@
  */
 
 define('INTERNAL', 1);
-define('PUBLIC', 1);
 define('NOCHECKPASSWORDCHANGE', 1);
 require(dirname(dirname(dirname(dirname(dirname(__FILE__))))) . '/init.php');
 

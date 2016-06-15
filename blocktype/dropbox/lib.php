@@ -60,6 +60,7 @@ class PluginBlocktypeDropbox extends PluginBlocktypeCloud {
     }
 
     public static function instance_config_form($instance) {
+        global $USER;
         $instanceid = $instance->get('id');
         $configdata = $instance->get('configdata');
         safe_require('artefact', 'cloud');
@@ -79,7 +80,7 @@ class PluginBlocktypeDropbox extends PluginBlocktypeCloud {
                 'dropboxisconnect' => array(
                     'type' => 'cancel',
                     'value' => get_string('revokeconnection', 'blocktype.cloud/dropbox'),
-                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/dropbox/account.php?action=logout',
+                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/dropbox/account.php?action=logout&sesskey=' . $USER->get('sesskey'),
                 ),
                 'dropboxfiles' => array(
                     'type'     => 'datatables',
@@ -106,7 +107,7 @@ class PluginBlocktypeDropbox extends PluginBlocktypeCloud {
                 'dropboxisconnect' => array(
                     'type' => 'cancel',
                     'value' => get_string('connecttodropbox', 'blocktype.cloud/dropbox'),
-                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/dropbox/account.php?action=login&view=' . $viewid,
+                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/dropbox/account.php?action=login&view=' . $viewid . '&sesskey=' . $USER->get('sesskey'),
                 ),
             );
         }
@@ -116,11 +117,14 @@ class PluginBlocktypeDropbox extends PluginBlocktypeCloud {
         // Folder and file IDs (and other values) are returned as JSON/jQuery serialized string.
         // We have to parse that string and urldecode it (to correctly convert square brackets)
         // in order to get cloud folder and file IDs - they are stored in $artefacts array.
-        parse_str(urldecode($values['dropboxfiles']));
-        if (!isset($artefacts) || empty($artefacts)) {
+        parse_str(urldecode($values['dropboxfiles']), $params);
+        if (!isset($params['artefacts']) || empty($params['artefacts'])) {
             $artefacts = array();
         }
-        
+        else {
+            $artefacts = $params['artefacts'];
+        }
+
         $values = array(
             'title'     => $values['title'],
             'artefacts' => $artefacts,
@@ -146,7 +150,7 @@ class PluginBlocktypeDropbox extends PluginBlocktypeCloud {
         $elements = array();
         $elements['applicationdesc'] = array(
             'type'  => 'html',
-            'value' => get_string('applicationdesc', 'blocktype.cloud/dropbox', '<a href="https://www.dropbox.com/developers/apps" target="_blank">', '</a>'),
+            'value' => get_string('applicationdesc', 'blocktype.cloud/dropbox', '<a href="https://www.dropbox.com/developers/apps">', '</a>'),
         );
         $elements['applicationgeneral'] = array(
             'type' => 'fieldset',
@@ -356,20 +360,34 @@ class PluginBlocktypeDropbox extends PluginBlocktypeCloud {
         if (!empty($consumer->key) && !empty($consumer->secret)) {
             $revoke_url = $consumer->apiurl.$consumer->version.'/disable_access_token';
             $port = $consumer->ssl ? '443' : '80';
-            $ch = curl_init($revoke_url);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            curl_setopt($ch, CURLOPT_PORT, $port);
-            curl_setopt($ch, CURLOPT_POST, true);
-            $result = curl_exec($ch);
-            curl_close($ch);
+            $params = array(
+                'access_token' => $consumer->usrprefs['access_token']
+            );
+            $config = array(
+                CURLOPT_URL => $revoke_url,
+                CURLOPT_PORT => $port,
+                CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => oauth_http_build_query($params),
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_SSL_VERIFYHOST => 2,
+                CURLOPT_SSL_VERIFYPEER => true,
+                CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
+            );
+            $result = mahara_http_request($config);
+            if ($result->error) {
+                $SESSION->add_error_msg($error);
+            }
+            // If we were successful at deleting the token, Dropbox will respond
+            // with an empty JSON dictionary.
+            else if (!isset($result->data) || trim($result->data) !== '{}') {
+                $SESSION->add_error_msg('Error deleting access token.');
+            }
         }
         else {
             $SESSION->add_error_msg('Can\'t find Dropbox consumer key and/or consumer secret.');
         }
     }
-    
+
     // SEE: https://www.dropbox.com/developers/core/docs#account-info
     public function account_info() {
         global $SESSION;

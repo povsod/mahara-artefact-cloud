@@ -10,6 +10,7 @@
  */
 
 defined('INTERNAL') || die();
+require_once(get_config('docroot') . 'artefact/lib.php');
 
 class PluginArtefactCloud extends PluginArtefact {
     
@@ -190,6 +191,17 @@ require_once(get_config('docroot') . 'blocktype/lib.php');
 
 abstract class PluginBlocktypeCloud extends PluginBlocktype {
 
+    /**
+     * The cloud blocks use the access token of the user who
+     * owns the page. This means they don't work with pages
+     * that don't have an owner (group, institution, site)
+     *
+     * @param View $view Allow it on this view?
+     */
+    public static function allowed_in_view(View $view) {
+        return $view->get('owner') != null;
+    }
+
     /*
      * Method that returns data about cloud,
      * needed in 'index.php' (cloud list).
@@ -245,6 +257,80 @@ abstract class PluginBlocktypeCloud extends PluginBlocktype {
      * Method for downloading file (on Cloud Service)
      */
     public abstract function download_file($file_id);
+
+    /**
+     * Saves the specified remote file into a File artefact in the current
+     * user's file area.
+     *
+     * @param string $fileid Remote ID of file to download
+     * @param int $destfolderid
+     * @return mixed FALSE on failure, ID of new artefact if successful
+     */
+    public static function download_to_artefact($fileid, $destfolderid) {
+        $file = static::get_file_info($fileid);
+        $file['content'] = static::download_file($file['id']);
+        return static::save_to_artefact($file, $destfolderid);
+    }
+
+    /**
+     * Saves the specified remote file into a File artefact in the current
+     * user's file area.
+     *
+     * @param string $fileid Remote ID of file to download
+     * @param int $destfolderid
+     * @return mixed FALSE on failure, ID of new artefact if successful
+     */
+    protected static function save_to_artefact($file, $destfolderid) {
+        global $USER, $CFG, $SESSION;
+
+        require_once($CFG->docroot . '/lib/uploadmanager.php');
+        safe_require('artefact', 'file');
+
+        // Write file content to local Mahara file repository
+        $tempdir = get_config('dataroot') . 'artefact/file/temp';
+        check_dir_exists($tempdir);
+        $tempfile = tempnam($tempdir, 'cloud.');
+
+        file_put_contents($tempfile, $file['content']);
+
+        $error = mahara_clam_scan_file($tempfile);
+        if ($error) {
+            $SESSION->add_error_msg($error);
+            @unlink($tempfile);
+            return false;
+        }
+
+        $data = (object) array(
+            'parent'       => ($destfolderid > 0 ? $destfolderid : null),
+            'owner'        => $USER->get('id'),
+            'title'        => $file['name'],
+            'author'       => $USER->get('id'),
+            'oldextension' => pathinfo($file['name'], PATHINFO_EXTENSION),
+            'size'         => $file['bytes']
+        );
+        $null = null; // HACK to workaround by-reference parameter
+        try {
+            $artefactid = ArtefactTypeFile::save_file(
+                $tempfile,
+                $data,
+                $null,
+                true
+            );
+        }
+        catch (QuotaExceededException $e) {
+            $SESSION->add_error_msg(get_string('uploadexceedsquota', 'artefact.file'));
+            @unlink($tempfile);
+            return false;
+        }
+
+        if (!$artefactid) {
+            $SESSION->add_error_msg("Error: file not saved.");
+            @unlink($tempfile);
+            return false;
+        }
+
+        return $artefactid;
+    }
 
     /*
      * Method for embedding file (on Cloud Service)
