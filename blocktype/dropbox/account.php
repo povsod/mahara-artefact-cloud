@@ -5,7 +5,7 @@
  * @subpackage blocktype-dropbox
  * @author     Gregor Anzelj
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2012-2016 Gregor Anzelj, info@povsod.com
+ * @copyright  (C) 2012-2017 Gregor Anzelj, info@povsod.com
  *
  */
 
@@ -19,6 +19,8 @@ require(dirname(dirname(dirname(dirname(dirname(__FILE__))))) . '/init.php');
 define('TITLE', get_string('servicename', 'blocktype.cloud/dropbox'));
 require_once('lib.php');
 
+// Check sesskey to reduce risk of Cross-Site-Request Forgery
+form_validate(param_alphanum('sesskey', null));
 $action = param_alpha('action', 'info');
 $viewid = param_integer('view', 0);
 

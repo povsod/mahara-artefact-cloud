@@ -40,7 +40,7 @@ function pieform_element_datatables(Pieform $form, $element) {/*{{{*/
         <tr> 
             <th width="20"></th>
             <th>{$strName}</th>
-            <th width="25%"></th>
+            <th width="20%"></th>
             <th width="1"></th>
         </tr>
     </thead>
@@ -92,51 +92,8 @@ function pieform_element_datatables_views_js(Pieform $form, $element) {
     $zerorecords  = json_encode(get_string('zerorecords', 'artefact.cloud'));
     
     $js = <<<EOJS
-//
-// fnReloadAjax()
-//
-jQuery.fn.dataTableExt.oApi.fnReloadAjax = function ( oSettings, sNewSource, fnCallback, bStandingRedraw ) {
-    if ( typeof sNewSource != 'undefined' && sNewSource != null ) {
-        oSettings.sAjaxSource = sNewSource;
-    }
-    this.oApi._fnProcessingDisplay( oSettings, true );
-    var that = this;
-    var iStart = oSettings._iDisplayStart;
-    var aData = [];
-    
-    this.oApi._fnServerParams( oSettings, aData );
-    
-    oSettings.fnServerData( oSettings.sAjaxSource, aData, function(json) {
-        /* Clear the old information from the table */
-        that.oApi._fnClearTable( oSettings );
-        
-        /* Got the data - add it to the table */
-        var aData = (oSettings.sAjaxDataProp !== "") ?    that.oApi._fnGetObjectDataFn( oSettings.sAjaxDataProp )( json ) : json;
-        
-        for ( var i=0 ; i<aData.length ; i++ ) {
-            that.oApi._fnAddData( oSettings, aData[i] );
-        }
-        
-        oSettings.aiDisplay = oSettings.aiDisplayMaster.slice();
-        that.fnDraw();
-        
-        if ( typeof bStandingRedraw != 'undefined' && bStandingRedraw === true ) {
-            oSettings._iDisplayStart = iStart;
-            that.fnDraw( false );
-        }
-        
-        that.oApi._fnProcessingDisplay( oSettings, false );
-        
-        /* Callback user function - for event handlers etc */
-        if ( typeof fnCallback == 'function' && fnCallback != null ) {
-            fnCallback( oSettings );
-        }
-    }, oSettings );
-}
-
-
-var table = jQuery('#filelist').DataTable( {
-    "stripeClasses": [ 'r0', 'r1' ],
+var table = jQuery('#filelist').DataTable({
+    "stripeClasses": ['r0', 'r1'],
     "lengthChange": false,
     "searching": false,
     "ordering": true,
@@ -145,20 +102,8 @@ var table = jQuery('#filelist').DataTable( {
     "processing": true,
     "serverSide": false,
     "ajax": '{$WWWROOT}artefact/cloud/form/elements/datatables.json.php?service={$SERVICE}&mode={$MODE}&block={$BLOCKID}&id=0',
-    "order": [[3,'desc']],
-    "orderFixed": [[3,'desc']],
-    "rowCallback": function(row, data, displayIndex, displayIndexFull) {
-        if (data[3] == "folder" || data[3] == "parentfolder") {
-            jQuery(row).addClass('file-item');
-            //jQuery(row).addClass('folder');
-            jQuery(row).addClass('no-hover');
-        }
-        if (data[3] == "file") {
-            jQuery(row).addClass('file-item');
-            jQuery(row).addClass('no-hover');
-        }
-        return row;
-    },
+    "order": [[3, 'desc']],
+    "orderFixed": [[3, 'desc']],
     "language": {
         "paginate": {
             "first": {$firstpage},
@@ -177,17 +122,17 @@ var table = jQuery('#filelist').DataTable( {
         "zeroRecords": {$zerorecords}
     },
     "columnDefs": [
-        { "targets": [ 0 ], "orderable": false }, /* Icon column */
-        { "targets": [ 1 ], "className": "filename" }, /* Name column */
-        { "targets": [ 2 ], "className": "text-right nowrap control-buttons", "orderable": false }, /* Ctrl column */
+        { "targets": [0], "orderable": false }, /* Icon column */
+        { "targets": [1], "className": "filename" }, /* Name column */
+        { "targets": [2], "className": "text-right nowrap control-buttons", "orderable": false }, /* Ctrl column */
         // This column must be last, because it is hidden or everything gets screwed up!
-        { "targets": [ 3 ], "visible": false, "orderable": false } /* Type column */
+        { "targets": [3], "visible": false, "orderable": false } /* Type column */
     ]
-} );
+});
     
 jQuery('#filelist').on('click', 'a.changefolder', function () {
     table.ajax.url('{$WWWROOT}artefact/cloud/form/elements/datatables.json.php?service={$SERVICE}&mode={$MODE}&block={$BLOCKID}&id=' + jQuery(this).attr('id')).load();
-} );
+});
     
 jQuery('#instconf').submit(function () {
     // Serialize values of all form elements and write then into hidden input element.
@@ -209,7 +154,7 @@ EOJS;
  */
 function pieform_element_datatables_get_headdata($element) {
     $headdata = array(
-        '<script type="text/javascript" src="' . get_config('wwwroot') . 'js/jquery/jquery.js"></script>',
+        //'<script type="text/javascript" src="' . get_config('wwwroot') . 'js/jquery/jquery.js"></script>',
         '<script type="text/javascript" src="' . get_config('wwwroot') . 'artefact/cloud/lib/datatables/js/jquery.dataTables.min.js"></script>',
         '<script type="text/javascript" src="' . get_config('wwwroot') . 'artefact/cloud/lib/datatables/js/dataTables.bootstrap.min.js"></script>',
     );

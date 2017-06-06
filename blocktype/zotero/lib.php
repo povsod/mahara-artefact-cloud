@@ -105,6 +105,7 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
     }
 
     public static function instance_config_form($instance) {
+        global $USER;
         $instanceid = $instance->get('id');
         $configdata = $instance->get('configdata');
         safe_require('artefact', 'cloud');
@@ -124,7 +125,7 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
                 'zoteroisconnect' => array(
                     'type' => 'cancel',
                     'value' => get_string('revokeconnection', 'blocktype.cloud/zotero'),
-                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/zotero/account.php?action=logout',
+                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/zotero/account.php?action=logout&sesskey=' . $USER->get('sesskey'),
                 ),
                 'zoterorefs' => array(
                     'type'     => 'datatables',
@@ -163,7 +164,7 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
                 'zoteroisconnect' => array(
                     'type' => 'cancel',
                     'value' => get_string('connecttozotero', 'blocktype.cloud/zotero'),
-                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/zotero/account.php?action=login&view=' . $viewid,
+                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/zotero/account.php?action=login&view=' . $viewid . '&sesskey=' . $USER->get('sesskey'),
                 ),
             );
         }
@@ -173,11 +174,14 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
         // Folder and file IDs (and other values) are returned as JSON/jQuery serialized string.
         // We have to parse that string and urldecode it (to correctly convert square brackets)
         // in order to get cloud folder and file IDs - they are stored in $artefacts array.
-        parse_str(urldecode($values['zoterorefs']));
-        if (!isset($artefacts) || empty($artefacts)) {
+        parse_str(urldecode($values['zoterorefs']), $params);
+        if (!isset($params['artefacts']) || empty($params['artefacts'])) {
             $artefacts = array();
         }
-        
+        else {
+            $artefacts = $params['artefacts'];
+        }
+
         $values = array(
             'title'       => $values['title'],
             'artefacts'   => $artefacts,
@@ -204,7 +208,7 @@ class PluginBlocktypeZotero extends PluginBlocktypeCloud {
         $elements = array();
         $elements['applicationdesc'] = array(
             'type'  => 'html',
-            'value' => get_string('applicationdesc', 'blocktype.cloud/zotero', '<a href="http://www.zotero.org/oauth/apps" target="_blank">', '</a>'),
+            'value' => get_string('applicationdesc', 'blocktype.cloud/zotero', '<a href="http://www.zotero.org/oauth/apps">', '</a>'),
         );
         $elements['applicationgeneral'] = array(
             'type' => 'fieldset',

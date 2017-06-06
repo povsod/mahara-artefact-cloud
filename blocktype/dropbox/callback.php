@@ -5,12 +5,11 @@
  * @subpackage blocktype-dropbox
  * @author     Gregor Anzelj
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2012-2016 Gregor Anzelj, info@povsod.com
+ * @copyright  (C) 2012-2017 Gregor Anzelj, info@povsod.com
  *
  */
 
 define('INTERNAL', 1);
-define('PUBLIC', 1);
 define('NOCHECKPASSWORDCHANGE', 1);
 require(dirname(dirname(dirname(dirname(dirname(__FILE__))))) . '/init.php');
 

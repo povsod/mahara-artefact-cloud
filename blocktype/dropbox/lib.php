@@ -5,7 +5,7 @@
  * @subpackage blocktype-dropbox
  * @author     Gregor Anzelj
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2012-2016 Gregor Anzelj, info@povsod.com
+ * @copyright  (C) 2012-2017 Gregor Anzelj, info@povsod.com
  *
  */
 
@@ -42,8 +42,10 @@ class PluginBlocktypeDropbox extends PluginBlocktypeCloud {
         $smarty->assign('SERVICE', 'dropbox');
         if (!empty($selected)) {
             $folder = dirname($selected[0]);
-            // Update root folder from '\' to '/'
-            $folder = ($folder == '\\' ? '/' : $folder);
+            // Update root folder from '\' to ''
+			if ($folder == '\\') {
+			    $folder = '';
+			}
         }
         else {
             $folder = '';
@@ -60,6 +62,7 @@ class PluginBlocktypeDropbox extends PluginBlocktypeCloud {
     }
 
     public static function instance_config_form($instance) {
+        global $USER;
         $instanceid = $instance->get('id');
         $configdata = $instance->get('configdata');
         safe_require('artefact', 'cloud');
@@ -79,7 +82,7 @@ class PluginBlocktypeDropbox extends PluginBlocktypeCloud {
                 'dropboxisconnect' => array(
                     'type' => 'cancel',
                     'value' => get_string('revokeconnection', 'blocktype.cloud/dropbox'),
-                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/dropbox/account.php?action=logout',
+                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/dropbox/account.php?action=logout&sesskey=' . $USER->get('sesskey'),
                 ),
                 'dropboxfiles' => array(
                     'type'     => 'datatables',
@@ -106,7 +109,7 @@ class PluginBlocktypeDropbox extends PluginBlocktypeCloud {
                 'dropboxisconnect' => array(
                     'type' => 'cancel',
                     'value' => get_string('connecttodropbox', 'blocktype.cloud/dropbox'),
-                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/dropbox/account.php?action=login&view=' . $viewid,
+                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/dropbox/account.php?action=login&view=' . $viewid . '&sesskey=' . $USER->get('sesskey'),
                 ),
             );
         }
@@ -116,11 +119,14 @@ class PluginBlocktypeDropbox extends PluginBlocktypeCloud {
         // Folder and file IDs (and other values) are returned as JSON/jQuery serialized string.
         // We have to parse that string and urldecode it (to correctly convert square brackets)
         // in order to get cloud folder and file IDs - they are stored in $artefacts array.
-        parse_str(urldecode($values['dropboxfiles']));
-        if (!isset($artefacts) || empty($artefacts)) {
+        parse_str(urldecode($values['dropboxfiles']), $params);
+        if (!isset($params['artefacts']) || empty($params['artefacts'])) {
             $artefacts = array();
         }
-        
+        else {
+            $artefacts = $params['artefacts'];
+        }
+
         $values = array(
             'title'     => $values['title'],
             'artefacts' => $artefacts,
@@ -146,7 +152,7 @@ class PluginBlocktypeDropbox extends PluginBlocktypeCloud {
         $elements = array();
         $elements['applicationdesc'] = array(
             'type'  => 'html',
-            'value' => get_string('applicationdesc', 'blocktype.cloud/dropbox', '<a href="https://www.dropbox.com/developers/apps" target="_blank">', '</a>'),
+            'value' => get_string('applicationdesc', 'blocktype.cloud/dropbox', '<a href="https://www.dropbox.com/developers/apps">', '</a>'),
         );
         $elements['applicationgeneral'] = array(
             'type' => 'fieldset',
@@ -241,9 +247,9 @@ class PluginBlocktypeDropbox extends PluginBlocktypeCloud {
         $wwwroot = get_config('wwwroot');
         $service = new StdClass();
         $service->ssl        = true;
-        $service->version    = 1; // API Version
-        $service->apiurl     = 'https://api.dropbox.com/';
-        $service->contenturl = 'https://api-content.dropbox.com/';
+        $service->version    = 2; // API Version
+        $service->apiurl     = 'https://api.dropboxapi.com/';
+        $service->contenturl = 'https://content.dropboxapi.com/';
         $service->wwwurl     = 'https://www.dropbox.com/';
         $service->key        = get_config_plugin('blocktype', 'dropbox', 'consumerkey');
         $service->secret     = get_config_plugin('blocktype', 'dropbox', 'consumersecret');
@@ -280,12 +286,12 @@ class PluginBlocktypeDropbox extends PluginBlocktypeCloud {
         return $service;
     }
 
-    // SEE: https://www.dropbox.com/developers/core/docs#oa2-authorize
+    // SEE: https://www.dropbox.com/developers/documentation/http/documentation#oauth2-authorize
     public function request_token() {
         global $SESSION;
         $consumer = self::get_service_consumer();
         if (!empty($consumer->key) && !empty($consumer->secret)) {
-            $url = $consumer->wwwurl.$consumer->version.'/oauth2/authorize';
+            $url = $consumer->wwwurl.'oauth2/authorize';
             $port = $consumer->ssl ? '443' : '80';
             $params = array(
                 'response_type' => 'code',
@@ -301,12 +307,12 @@ class PluginBlocktypeDropbox extends PluginBlocktypeCloud {
         }
     }
 
-    // SEE: https://www.dropbox.com/developers/core/docs#oa2-token
+    // SEE: https://www.dropbox.com/developers/documentation/http/documentation#oauth2-token
     public function access_token($oauth_code) {
         global $SESSION;
         $consumer = self::get_service_consumer();
         if (!empty($consumer->key) && !empty($consumer->secret)) {
-            $url = $consumer->apiurl.$consumer->version.'/oauth2/token';
+            $url = $consumer->apiurl.'oauth2/token';
             $port = $consumer->ssl ? '443' : '80';
             $params = array(
                 'code' => $oauth_code,
@@ -345,32 +351,44 @@ class PluginBlocktypeDropbox extends PluginBlocktypeCloud {
     }
 
     public function delete_token() {
-        global $USER;
+		global $USER;
         ArtefactTypeCloud::set_user_preferences('dropbox', $USER->get('id'), null);
     }
 
-    // SEE: https://www.dropbox.com/developers/core/docs#disable-token
+    // SEE: https://www.dropbox.com/developers/documentation/http/documentation#auth-token-revoke
     public function revoke_access() {
         global $SESSION;
         $consumer = self::get_service_consumer();
         if (!empty($consumer->key) && !empty($consumer->secret)) {
-            $revoke_url = $consumer->apiurl.$consumer->version.'/disable_access_token';
+            $revoke_url = $consumer->apiurl.$consumer->version.'/auth/token/revoke';
             $port = $consumer->ssl ? '443' : '80';
-            $ch = curl_init($revoke_url);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            curl_setopt($ch, CURLOPT_PORT, $port);
-            curl_setopt($ch, CURLOPT_POST, true);
-            $result = curl_exec($ch);
-            curl_close($ch);
+            $header = array();
+            $header[] = 'Authorization: Bearer ' . $consumer->usrprefs['access_token'];
+            $header[] = 'Content-Type: application/json';
+            $config = array(
+                CURLOPT_URL => $revoke_url,
+                CURLOPT_PORT => $port,
+                CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => 'null',
+                CURLOPT_HEADER => true,
+                CURLOPT_HTTPHEADER => $header,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_SSL_VERIFYHOST => 2,
+                CURLOPT_SSL_VERIFYPEER => true,
+                CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
+            );
+            $result = mahara_http_request($config);
+            if ($result->error) {
+                $SESSION->add_error_msg($error);
+            }
         }
         else {
             $SESSION->add_error_msg('Can\'t find Dropbox consumer key and/or consumer secret.');
         }
     }
-    
-    // SEE: https://www.dropbox.com/developers/core/docs#account-info
+
+    // SEE: https://www.dropbox.com/developers/documentation/http/documentation#users-get_current_account
+    // SEE: https://www.dropbox.com/developers/documentation/http/documentation#users-get_space_usage
     public function account_info() {
         global $SESSION;
         $consumer = self::get_service_consumer();
@@ -387,16 +405,18 @@ class PluginBlocktypeDropbox extends PluginBlocktypeCloud {
         $info->space_ratio  = null;
 
         if (!empty($consumer->key) && !empty($consumer->secret)) {
-            $url = $consumer->apiurl.$consumer->version.'/account/info';
+            $url = $consumer->apiurl.$consumer->version.'/users/get_current_account';
             $port = $consumer->ssl ? '443' : '80';
-            $params = array(
-                'access_token' => $consumer->usrprefs['access_token']
-            );
+            $header = array();
+            $header[] = 'Authorization: Bearer ' . $consumer->usrprefs['access_token'];
+            $header[] = 'Content-Type: application/json';
             $config = array(
                 CURLOPT_URL => $url,
                 CURLOPT_PORT => $port,
-                CURLOPT_POST => true,
-                CURLOPT_POSTFIELDS => oauth_http_build_query($params),
+				CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => 'null',
+                CURLOPT_HEADER => true,
+                CURLOPT_HTTPHEADER => $header,
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_SSL_VERIFYHOST => 2,
                 CURLOPT_SSL_VERIFYPEER => true,
@@ -405,16 +425,32 @@ class PluginBlocktypeDropbox extends PluginBlocktypeCloud {
             $result = mahara_http_request($config);
             if (isset($result->data) && !empty($result->data) &&
                 isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
-                $account = json_decode($result->data);
+                $account = json_decode(substr($result->data, $result->info['header_size']), true);
+
+                $url2 = $consumer->apiurl.$consumer->version.'/users/get_space_usage';
+                $config2 = array(
+                    CURLOPT_URL => $url2,
+                    CURLOPT_PORT => $port,
+				    CURLOPT_POST => true,
+                    CURLOPT_POSTFIELDS => 'null',
+                    CURLOPT_HEADER => true,
+                    CURLOPT_HTTPHEADER => $header,
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_SSL_VERIFYHOST => 2,
+                    CURLOPT_SSL_VERIFYPEER => true,
+                    CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
+                );
+                $result2 = mahara_http_request($config2);
+				$quota = json_decode(substr($result2->data, $result2->info['header_size']), true);
 
                 $info->service_name = 'dropbox';
                 $info->service_auth = true;
-                $info->user_id      = $account->uid;
-                $info->user_name    = $account->display_name;
-                $info->user_email   = $account->email;
-                $info->space_used   = bytes_to_size1024(floatval($account->quota_info->normal)+floatval($account->quota_info->shared));
-                $info->space_amount = bytes_to_size1024(floatval($account->quota_info->quota));
-                $info->space_ratio  = number_format(((floatval($account->quota_info->normal)+floatval($account->quota_info->shared))/floatval($account->quota_info->quota))*100, 2);
+                $info->user_id      = $account['account_id'];
+                $info->user_name    = $account['name']['display_name'];
+                $info->user_email   = $account['email'];
+                $info->space_used   = bytes_to_size1024(floatval($quota['used']));
+                $info->space_amount = bytes_to_size1024(floatval($quota['allocation']['allocated']));
+                $info->space_ratio  = number_format((floatval($quota['used'])/floatval($quota['allocation']['allocated']))*100, 2);
                 return $info;
             }
             else {
@@ -435,7 +471,7 @@ class PluginBlocktypeDropbox extends PluginBlocktypeCloud {
      * $folder_id   integer   ID of the folder (on Cloud Service), which contents we wish to retrieve
      * $output      array     Function returns array, used to generate list of files/folders to show in Mahara view/page
      *
-     * SEE: https://www.dropbox.com/developers/core/docs#metadata
+     * SEE: https://www.dropbox.com/developers/documentation/http/documentation#files-list_folder
      */
     public function get_filelist($folder_id='', $selected=array(), $owner=null) {
         global $SESSION;
@@ -447,17 +483,18 @@ class PluginBlocktypeDropbox extends PluginBlocktypeCloud {
             return false;
         }
         if (!empty($consumer->key) && !empty($consumer->secret)) {
-            $url = $consumer->apiurl.$consumer->version.'/metadata/dropbox';
-            $url .= implode('/', array_map('rawurlencode', explode('/', $folder_id)));
+            $url = $consumer->apiurl.$consumer->version.'/files/list_folder';
             $port = $consumer->ssl ? '443' : '80';
-            $params = array(
-                'access_token' => $consumer->usrprefs['access_token']
-            );
+            $header = array();
+            $header[] = 'Authorization: Bearer ' . $consumer->usrprefs['access_token'];
+            $header[] = 'Content-Type: application/json';
             $config = array(
                 CURLOPT_URL => $url,
                 CURLOPT_PORT => $port,
                 CURLOPT_POST => true,
-                CURLOPT_POSTFIELDS => oauth_http_build_query($params),
+                CURLOPT_POSTFIELDS => '{"path": "' . $folder_id . '", "recursive": false, "include_media_info": false, "include_deleted": false, "include_has_explicit_shared_members": false}',
+                CURLOPT_HEADER => true,
+                CURLOPT_HTTPHEADER => $header,
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_SSL_VERIFYHOST => 2,
                 CURLOPT_SSL_VERIFYPEER => true,
@@ -466,23 +503,36 @@ class PluginBlocktypeDropbox extends PluginBlocktypeCloud {
             $result = mahara_http_request($config);
             if (isset($result->data) && !empty($result->data) &&
                 isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
-                $data = json_decode($result->data);
+				$data = json_decode(substr($result->data, $result->info['header_size']), true);
                 $output = array(
                     'folders' => array(),
                     'files'   => array()
                 );
-                if (!empty($data->contents)) {
-                    foreach($data->contents as $artefact) {
-                        if (in_array($artefact->path, $selected)) {
+
+				// Sort by type (file or folder) and then by name
+				$entries = $data['entries'];
+                $entrytype = array();
+                $entryname = array();
+                for ($i = 0; $i < count($entries); $i++) {
+                    $entrytype[] = $entries[$i]['.tag'];
+                    $entryname[] = $entries[$i]['path_lower'];
+                }
+                array_multisort($entrytype, SORT_DESC,
+                                $entryname, SORT_ASC,
+                                $entries);
+
+                if (isset($entries) && !empty($entries)) {
+                    foreach($entries as $artefact) {
+                        if (in_array($artefact['path_display'], $selected)) {
                             // In Dropbox id basically means path...
-                            $id          = $artefact->path;
-                            $type        = ($artefact->is_dir ? 'folder' : 'file');
+                            $id          = $artefact['path_display'];
+                            $type        = $artefact['.tag'];
                             // Get artefactname by removing parent path from beginning...
-                            $title       = basename($artefact->path);
+                            $title       = $artefact['name'];
                             $description = ''; // Dropbox doesn't support file/folder descriptions
-                            $size        = bytes_to_size1024($artefact->bytes);
-                            if ($artefact->is_dir) {
-                                $created = format_date(strtotime($artefact->modified), 'strftimedaydate');
+                            $size        = bytes_to_size1024($artefact['size']);
+                            if ($type == 'folder') {
+                                $created = null;
                                 $output['folders'][] = array(
                                     'id' => $id,
                                     'title' => $title,
@@ -493,7 +543,7 @@ class PluginBlocktypeDropbox extends PluginBlocktypeCloud {
                                 );
                             }
                             else {
-                                $created = format_date(strtotime($artefact->client_mtime), 'strftimedaydate');
+                                $created = format_date(strtotime($artefact['client_modified']), 'strftimedaydate');
                                 $output['files'][] = array(
                                     'id' => $id,
                                     'title' => $title,
@@ -532,15 +582,15 @@ class PluginBlocktypeDropbox extends PluginBlocktypeCloud {
      * PLEASE NOTE: For jQuery Datatable to work, the $output array must be properly formatted and JSON encoded.
      *              Please see: http://datatables.net/usage/server-side (Reply from the server)!
      *
-     * SEE: https://www.dropbox.com/developers/core/docs#metadata
+     * SEE: https://www.dropbox.com/developers/documentation/http/documentation#files-list_folder
      */
-    public function get_folder_content($folder_id='/', $options, $block=0) {
+    public function get_folder_content($folder_id='', $options, $block=0) {
         global $SESSION;
 
-        // $folder_id is globally set to '0', set it to '/'
+        // $folder_id is globally set to '0', set it to ''
         // as it is the Dropbox default root folder ...
         if ($folder_id == '0') {
-            $folder_id = '/';
+            $folder_id = '';
         }
 
         // Get selected artefacts (folders and/or files)
@@ -568,17 +618,18 @@ class PluginBlocktypeDropbox extends PluginBlocktypeCloud {
         // Get folder contents...
         $consumer = self::get_service_consumer();
         if (!empty($consumer->key) && !empty($consumer->secret)) {
-            $url = $consumer->apiurl.$consumer->version.'/metadata/dropbox';
-            $url .= implode('/', array_map('rawurlencode', explode('/', $folder_id)));
+            $url = $consumer->apiurl.$consumer->version.'/files/list_folder';
             $port = $consumer->ssl ? '443' : '80';
-            $params = array(
-                'access_token' => $consumer->usrprefs['access_token']
-            );
+            $header = array();
+            $header[] = 'Authorization: Bearer ' . $consumer->usrprefs['access_token'];
+            $header[] = 'Content-Type: application/json';
             $config = array(
                 CURLOPT_URL => $url,
                 CURLOPT_PORT => $port,
                 CURLOPT_POST => true,
-                CURLOPT_POSTFIELDS => oauth_http_build_query($params),
+                CURLOPT_POSTFIELDS => '{"path": "' . $folder_id . '", "recursive": false, "include_media_info": false, "include_deleted": false, "include_has_explicit_shared_members": false}',
+                CURLOPT_HEADER => true,
+                CURLOPT_HTTPHEADER => $header,
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_SSL_VERIFYHOST => 2,
                 CURLOPT_SSL_VERIFYPEER => true,
@@ -587,27 +638,42 @@ class PluginBlocktypeDropbox extends PluginBlocktypeCloud {
             $result = mahara_http_request($config);
             if (isset($result->data) && !empty($result->data) &&
                 isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
-                $data = json_decode($result->data);
+				$data = json_decode(substr($result->data, $result->info['header_size']), true);
+
+				// Sort by type (file or folder) and then by name
+				$entries = $data['entries'];
+                $entrytype = array();
+                $entryname = array();
+                for ($i = 0; $i < count($entries); $i++) {
+                    $entrytype[] = $entries[$i]['.tag'];
+                    $entryname[] = $entries[$i]['path_lower'];
+                }
+                array_multisort($entrytype, SORT_DESC,
+                                $entryname, SORT_ASC,
+                                $entries);
+
                 $output = array();
                 $count = 0;
                 // Add 'parent' row entry to jQuery Datatable...
-                if (strlen($data->path) > 1) {
-                    $parentpath  = str_replace('\\', '/', dirname($data->path));
+                if (strlen($folder_id) > 1) {
+                    $parentpath  = str_replace('\\', '/', dirname($folder_id));
+					if ($parentpath == '/') {
+					    $parentpath = ''; // root folder
+					}
                     $type        = 'parentfolder';
                     $foldername  = get_string('parentfolder', 'artefact.file');
                     $icon        = '<span class="icon-level-up icon icon-lg"></span>';
                     $title       = '<a class="changefolder" href="javascript:void(0)" id="' . $parentpath . '" title="' . get_string('gotofolder', 'artefact.file', $foldername) . '">' . $foldername . '</a>';
                     $output['data'][] = array($icon, $title, '', $type);
                 }
-                if (!empty($data->contents)) {
+                if (!empty($entries)) {
                     $detailspath = get_config('wwwroot') . 'artefact/cloud/blocktype/dropbox/details.php';
-                    foreach($data->contents as $artefact) {
+                    foreach($entries as $artefact) {
                         // In Dropbox id basically means path...
-                        $id   = $artefact->path;
-                        $type = ($artefact->is_dir ? 'folder' : 'file');
-                        // Get artefactname by removing parent path from beginning...
-                        $artefactname = basename($artefact->path);
-                        if ($artefact->is_dir) {
+                        $id   = $artefact['path_display'];
+                        $type = $artefact['.tag'];
+                        $artefactname = $artefact['name'];
+                        if ($type == 'folder') {
                             $icon  = '<span class="icon-folder-open icon icon-lg"></span>';
                             $title = '<a class="changefolder" href="javascript:void(0)" id="' . $id . '" title="' . get_string('gotofolder', 'artefact.file', $artefactname) . '">' . $artefactname . '</a>';
                         }
@@ -617,7 +683,7 @@ class PluginBlocktypeDropbox extends PluginBlocktypeCloud {
                         }
                         $controls = '';
                         $selected = (in_array(''.$id, $artefacts) ? ' checked' : '');
-                        if ($artefact->is_dir) {
+                        if ($type == 'folder') {
                             if ($selectFolders) {
                                 $controls = '<input type="' . ($selectMultiple ? 'checkbox' : 'radio') . '" name="artefacts[]" id="artefacts[]" value="' . $id . '"' . $selected . '>';
                             }
@@ -652,23 +718,23 @@ class PluginBlocktypeDropbox extends PluginBlocktypeCloud {
         }
     }
     
-    // SEE: https://www.dropbox.com/developers/core/docs#metadata
-    public function get_folder_info($folder_id='/', $owner=null) {
+    // SEE: https://www.dropbox.com/developers/documentation/http/documentation#files-get_metadata
+    public function get_folder_info($folder_id='', $owner=null) {
         global $SESSION;
         $consumer = self::get_service_consumer($owner);
         if (!empty($consumer->key) && !empty($consumer->secret)) {
-            $url = $consumer->apiurl.$consumer->version.'/metadata/dropbox'.$folder_id;
+            $url = $consumer->apiurl.$consumer->version.'/files/get_metadata';
             $port = $consumer->ssl ? '443' : '80';
-            $params = array(
-                'access_token' => $consumer->usrprefs['access_token'],
-                // Method specific parameters...
-                'list' => false,
-            );
+            $header = array();
+            $header[] = 'Authorization: Bearer ' . $consumer->usrprefs['access_token'];
+            $header[] = 'Content-Type: application/json';
             $config = array(
                 CURLOPT_URL => $url,
                 CURLOPT_PORT => $port,
                 CURLOPT_POST => true,
-                CURLOPT_POSTFIELDS => oauth_http_build_query($params),
+                CURLOPT_POSTFIELDS => '{"path": "' . $folder_id . '", "include_media_info": false, "include_deleted": false, "include_has_explicit_shared_members": false}',
+                CURLOPT_HEADER => true,
+                CURLOPT_HTTPHEADER => $header,
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_SSL_VERIFYHOST => 2,
                 CURLOPT_SSL_VERIFYPEER => true,
@@ -677,14 +743,14 @@ class PluginBlocktypeDropbox extends PluginBlocktypeCloud {
             $result = mahara_http_request($config);
             if (isset($result->data) && !empty($result->data) &&
                 isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
-                $data = json_decode($result->data);
+                $data = json_decode(substr($result->data, $result->info['header_size']), true);
                 $info = array(
-                    'id'          => $data->path,
-                    'name'        => basename($data->path),
-                    'size'        => $data->bytes,
-                    'updated'     => format_date(strtotime($data->modified), 'strfdaymonthyearshort'),
-                    'rev'         => $data->rev,
-                    'root'        => $data->root,
+                    'id'          => $data['path_display'],
+                    'name'        => $data['name'],
+                    //'size'        => null, //$data->bytes,
+                    //'updated'     => null,
+                    //'rev'         => null, //$data->rev,
+                    //'root'        => null, //$data->root,
                 );
                 return $info;
             }
@@ -699,23 +765,23 @@ class PluginBlocktypeDropbox extends PluginBlocktypeCloud {
         }
     }
     
-    // SEE: https://www.dropbox.com/developers/core/docs#metadata
-    public function get_file_info($file_id='/', $owner=null) {
+    // SEE: https://www.dropbox.com/developers/documentation/http/documentation#files-get_metadata
+    public function get_file_info($file_id='', $owner=null) {
         global $SESSION;
         $consumer = self::get_service_consumer($owner);
         if (!empty($consumer->key) && !empty($consumer->secret)) {
-            $url = $consumer->apiurl.$consumer->version.'/metadata/dropbox'.$file_id;
+            $url = $consumer->apiurl.$consumer->version.'/files/get_metadata';
             $port = $consumer->ssl ? '443' : '80';
-            $params = array(
-                'access_token' => $consumer->usrprefs['access_token'],
-                // Method specific parameters...
-                'list' => false,
-            );
+            $header = array();
+            $header[] = 'Authorization: Bearer ' . $consumer->usrprefs['access_token'];
+            $header[] = 'Content-Type: application/json';
             $config = array(
                 CURLOPT_URL => $url,
                 CURLOPT_PORT => $port,
                 CURLOPT_POST => true,
-                CURLOPT_POSTFIELDS => oauth_http_build_query($params),
+                CURLOPT_POSTFIELDS => '{"path": "' . $file_id . '", "include_media_info": false, "include_deleted": false, "include_has_explicit_shared_members": false}',
+                CURLOPT_HEADER => true,
+                CURLOPT_HTTPHEADER => $header,
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_SSL_VERIFYHOST => 2,
                 CURLOPT_SSL_VERIFYPEER => true,
@@ -724,18 +790,18 @@ class PluginBlocktypeDropbox extends PluginBlocktypeCloud {
             $result = mahara_http_request($config);
             if (isset($result->data) && !empty($result->data) &&
                 isset($result->info) && !empty($result->info) && $result->info['http_code'] == 200) {
-                $data = json_decode($result->data);
+                $data = json_decode(substr($result->data, $result->info['header_size']), true);
                 $info = array(
-                    'id'        => $data->path,
-                    'parent_id' => dirname($data->path),
-                    'name'      => basename($data->path),
-                    'size'      => bytes_to_size1024($data->bytes),
-                    'bytes'     => $data->bytes,
-                    'updated'   => format_date(strtotime($data->modified), 'strfdaymonthyearshort'),
-                    'created'   => format_date(strtotime($data->client_mtime), 'strfdaymonthyearshort'),
-                    'mimetype'  => $data->mime_type,
-                    'rev'       => $data->rev,
-                    'root'      => $data->root,
+                    'id'        => $data['path_display'],
+                    'parent_id' => dirname($data['path_display']),
+                    'name'      => $data['name'],
+                    'size'      => bytes_to_size1024($data['size']), //???
+                    'bytes'     => $data['size'], //???
+                    'updated'   => format_date(strtotime($data['server_modified']), 'strfdaymonthyearshort'),
+                    'created'   => format_date(strtotime($data['client_modified']), 'strfdaymonthyearshort'),
+                    //'mimetype'  => $data->mime_type,
+                    'rev'       => $data['rev'],
+                    //'root'      => $data->root,
                 );
                 return $info;
             }
@@ -750,28 +816,32 @@ class PluginBlocktypeDropbox extends PluginBlocktypeCloud {
         }
     }
     
-    // SEE: https://www.dropbox.com/developers/core/docs#files-GET
-    public function download_file($file_id='/', $owner=null) {
+    // SEE: https://www.dropbox.com/developers/documentation/http/documentation#files-download
+    public function download_file($file_id='', $owner=null) {
         global $SESSION;
         $consumer = self::get_service_consumer($owner);
         $params   = array();
         if (!empty($consumer->key) && !empty($consumer->secret)) {
-            $url = $consumer->contenturl.$consumer->version.'/files/dropbox'.$file_id;
+            $url = $consumer->contenturl.$consumer->version.'/files/download';
             $port = $consumer->ssl ? '443' : '80';
-            $params = array(
-                'access_token' => $consumer->usrprefs['access_token']
-            );
+            $header = array();
+            $header[] = 'Authorization: Bearer ' . $consumer->usrprefs['access_token'];
+            $header[] = 'Content-Type: '; // must be empty!
+            $header[] = 'Dropbox-API-Arg: {"path": "' . $file_id . '"}';
             $config = array(
-                CURLOPT_URL => $url.'?'.oauth_http_build_query($params),
+                CURLOPT_URL => $url,
                 CURLOPT_PORT => $port,
-                CURLOPT_POST => false,
+                CURLOPT_POSTFIELDS => null, // must be empty!
+                CURLOPT_HEADER => true,
+                CURLOPT_HTTPHEADER => $header,
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_SSL_VERIFYHOST => 2,
                 CURLOPT_SSL_VERIFYPEER => true,
                 CURLOPT_CAINFO => get_config('docroot').'artefact/cloud/cert/cacert.crt'
             );
             $result = mahara_http_request($config);
-            return $result->data;
+			$data = substr($result->data, $result->info['header_size']);
+            return $data;
         }
         else {
             $SESSION->add_error_msg('Can\'t find Dropbox consumer key and/or consumer secret.');

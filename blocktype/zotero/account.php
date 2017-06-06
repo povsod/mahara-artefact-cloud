@@ -19,6 +19,8 @@ require(dirname(dirname(dirname(dirname(dirname(__FILE__))))) . '/init.php');
 define('TITLE', get_string('servicename', 'blocktype.cloud/zotero'));
 require_once('lib.php');
 
+// Check sesskey to reduce risk of Cross-Site-Request Forgery
+form_validate(param_alphanum('sesskey', null));
 $action = param_alpha('action', 'info');
 $viewid = param_integer('view', 0);
 

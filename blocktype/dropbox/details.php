@@ -5,7 +5,7 @@
  * @subpackage blocktype-dropbox
  * @author     Gregor Anzelj
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2012-2016 Gregor Anzelj, info@povsod.com
+ * @copyright  (C) 2012-2017 Gregor Anzelj, info@povsod.com
  *
  */
 
@@ -25,6 +25,14 @@ if ($viewid > 0) {
     $view = new View($viewid);
     $owner = $view->get('owner');
     if (!can_view_view($viewid)) {
+        throw new AccessDeniedException();
+    }
+}
+else {
+    // If no view id was provided, we'll use the current user's token.
+    // If you're logged out, obviously you have no token, so therefore
+    // we shouldn't even try.
+    if (!$USER->get('id')) {
         throw new AccessDeniedException();
     }
 }

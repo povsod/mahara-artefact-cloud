@@ -29,10 +29,6 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
         return array('external');
     }
 
-    public static function get_instance_config_javascript() {
-        return array('js/configform.js');
-    }
-
     public static function render_instance(BlockInstance $instance, $editing=false) {
         $configdata = $instance->get('configdata');
         $viewid     = $instance->get('view');
@@ -41,7 +37,11 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
         $ownerid = $view->get('owner');
 
         $selected = (!empty($configdata['artefacts']) ? $configdata['artefacts'] : array());
-        $display  = (!empty($configdata['display']) ? $configdata['display'] : 'list');
+        $display  = (
+            !empty($configdata['display']) && $configdata['display'] === 'embed'
+            ? 'embed'
+            : 'list'
+        );
         $width    = (!empty($configdata['width']) ? $configdata['width'] : 480);
         $height   = (!empty($configdata['height']) ? $configdata['height'] : 360);
         
@@ -59,7 +59,6 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
                 $smarty->assign('embed', $html);
                 break;
             case 'list':
-            default:
                 if (!empty($selected)) {
                     $file = self::get_file_info($selected[0]);
                     $folder = $file['parent_id'];
@@ -70,6 +69,10 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
                 $data = self::get_filelist($folder, $selected, $ownerid);
                 $smarty->assign('folders', $data['folders']);
                 $smarty->assign('files', $data['files']);
+                break;
+            default:
+                log_warn('Invalid display method: {$display}');
+                return false;
         }
         $smarty->assign('viewid', $viewid);
         return $smarty->fetch('artefact:cloud:' . $display . '.tpl');
@@ -80,6 +83,7 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
     }
 
     public static function instance_config_form($instance) {
+        global $USER;
         $instanceid = $instance->get('id');
         $configdata = $instance->get('configdata');
         $allowed = (!empty($configdata['allowed']) ? $configdata['allowed'] : array());
@@ -100,7 +104,7 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
                 'googledriveisconnect' => array(
                     'type' => 'cancel',
                     'value' => get_string('revokeconnection', 'blocktype.cloud/googledrive'),
-                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/googledrive/account.php?action=logout',
+                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/googledrive/account.php?action=logout&sesskey=' . $USER->get('sesskey'),
                 ),
                 'googledrivefiles' => array(
                     'type'     => 'datatables',
@@ -170,7 +174,7 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
                 'googledriveisconnect' => array(
                     'type' => 'cancel',
                     'value' => get_string('connecttogoogledrive', 'blocktype.cloud/googledrive'),
-                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/googledrive/account.php?action=login&view=' . $viewid,
+                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/googledrive/account.php?action=login&view=' . $viewid . '&sesskey=' . $USER->get('sesskey'),
                 ),
             );
         }
@@ -180,11 +184,14 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
         // Folder and file IDs (and other values) are returned as JSON/jQuery serialized string.
         // We have to parse that string and urldecode it (to correctly convert square brackets)
         // in order to get cloud folder and file IDs - they are stored in $artefacts array.
-        parse_str(urldecode($values['googledrivefiles']));
-        if (!isset($artefacts) || empty($artefacts)) {
+        parse_str(urldecode($values['googledrivefiles']), $params);
+        if (!isset($params['artefacts']) || empty($params['artefacts'])) {
             $artefacts = array();
         }
-        
+        else {
+            $artefacts = $params['artefacts'];
+        }
+
         $values = array(
             'title'     => $values['title'],
             'artefacts' => $artefacts,
@@ -215,7 +222,7 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
         $elements = array();
         $elements['applicationdesc'] = array(
             'type'  => 'html',
-            'value' => get_string('applicationdesc', 'blocktype.cloud/googledrive', '<a href="https://console.cloud.google.com/apis/credentials" target="_blank">', '</a>'),
+            'value' => get_string('applicationdesc', 'blocktype.cloud/googledrive', '<a href="https://console.cloud.google.com/apis/credentials">', '</a>'),
         );
         $elements['webappsclientid'] = array(
             'type' => 'fieldset',
@@ -1060,6 +1067,15 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
         }
     }
 
+    public function export_to_artefact($fileid, $destfolderid, $fileformat) {
+        $file = static::get_file_info($fileid);
+        $file['content'] = static::export_file($file['export'][$fileformat]);
+        $extension = mime2extension($fileformat);
+        $file['name'] = "{$file['name']}.{$extension}";
+        $file['bytes'] = strlen($file['content']);
+        return static::save_to_artefact($file, $destfolderid);
+    }
+
     /*
      * Export and save native GoogleDocs file into selected file format (MIME type).
      *
@@ -1139,4 +1155,80 @@ class PluginBlocktypeGoogledrive extends PluginBlocktypeCloud {
         }
     }
 
+}
+
+function mime2extension($mimeType) {
+    $extension = '';
+    switch ($mimeType) {
+        case 'application/zip':
+            $extension = 'zip';
+            break;
+        case 'application/msword':
+            $extension = 'doc';
+            break;
+        case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+            $extension = 'docx';
+            break;
+        case 'application/pdf':
+            $extension = 'pdf';
+            break;
+        case 'application/rtf':
+            $extension = 'rtf';
+            break;
+        case 'application/vnd.ms-excel':
+            $extension = 'xls';
+            break;
+        case 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
+            $extension = 'xlsx';
+            break;
+        case 'application/vnd.ms-powerpoint':
+            $extension = 'ppt';
+            break;
+        case 'application/vnd.openxmlformats-officedocument.presentationml.presentation':
+            $extension = 'pptx';
+            break;
+        case 'application/vnd.oasis.opendocument.text':
+        case 'application/x-vnd.oasis.opendocument.text':
+            $extension = 'odt';
+            break;
+        case 'application/vnd.oasis.opendocument.spreadsheet':
+        case 'application/x-vnd.oasis.opendocument.spreadsheet':
+            $extension = 'ods';
+            break;
+        case 'application/vnd.oasis.opendocument.presentation':
+        case 'application/x-vnd.oasis.opendocument.presentation':
+            $extension = 'odp';
+            break;
+        case 'image/jpeg':
+        case 'image/jpg':
+        case 'application/jpg':
+        case 'application/x-jpg':
+        case 'image/vnd.swiftview-jpeg':
+        case 'image/x-xbitmap':
+            $extension = 'jpg';
+            break;
+        case 'image/png':
+        case 'application/png':
+        case 'application/x-png':
+            $extension = 'png';
+            break;
+        case 'image/svg':
+        case 'image/svg+xml':
+        case 'image/svg-xml':
+        case 'image/vnd.adobe.svg+xml':
+        case 'text/xml-svg':
+            $extension = 'svg';
+            break;
+        case 'text/html':
+            $extension = 'html';
+            break;
+        case 'text/plain':
+        case 'application/txt':
+            $extension = 'txt';
+            break;
+        default:
+            // Last try, see if it's in the mimetypes table
+            $extension = get_field('artefact_file_mime_types', 'description', 'mimetype', $mimeType);
+    }
+    return $extension;
 }

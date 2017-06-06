@@ -37,7 +37,11 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
         $ownerid = $view->get('owner');
 
         $selected = (!empty($configdata['artefacts']) ? $configdata['artefacts'] : array());
-        $display  = (!empty($configdata['display']) ? $configdata['display'] : 'list');
+        $display  = (
+            !empty($configdata['display']) && $configdata['display'] === 'embed'
+            ? 'embed'
+            : 'list'
+        );
         $width    = (!empty($configdata['width']) ? $configdata['width'] : 466);
         $height   = (!empty($configdata['height']) ? $configdata['height'] : 400);
         
@@ -58,7 +62,6 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
                 $smarty->assign('embed', $html);
                 break;
             case 'list':
-            default:
                 if (!empty($selected)) {
                     $file = self::get_file_info($selected[0]);
                     $folder = $file['parent_id'];
@@ -69,6 +72,10 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
                 $data = self::get_filelist($folder, $selected, $ownerid);
                 $smarty->assign('folders', $data['folders']);
                 $smarty->assign('files', $data['files']);
+                break;
+            default:
+                log_warn('Invalid display method: {$display}');
+                return false;
         }
         $smarty->assign('viewid', $viewid);
         return $smarty->fetch('artefact:cloud:' . $display . '.tpl');
@@ -79,6 +86,7 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
     }
 
     public static function instance_config_form($instance) {
+        global $USER;
         $instanceid = $instance->get('id');
         $configdata = $instance->get('configdata');
         $allowed = (!empty($configdata['allowed']) ? $configdata['allowed'] : array());
@@ -99,7 +107,7 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
                 'boxisconnect' => array(
                     'type' => 'cancel',
                     'value' => get_string('revokeconnection', 'blocktype.cloud/box'),
-                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/box/account.php?action=logout',
+                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/box/account.php?action=logout&sesskey=' . $USER->get('sesskey'),
                 ),
                 'boxpath' => array(
                     'type'  => 'hidden',
@@ -163,7 +171,7 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
                 'boxisconnect' => array(
                     'type' => 'cancel',
                     'value' => get_string('connecttobox', 'blocktype.cloud/box'),
-                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/box/account.php?action=login&view=' . $viewid,
+                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/box/account.php?action=login&view=' . $viewid . '&sesskey=' . $USER->get('sesskey'),
                 ),
             );
         }
@@ -173,11 +181,14 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
         // Folder and file IDs (and other values) are returned as JSON/jQuery serialized string.
         // We have to parse that string and urldecode it (to correctly convert square brackets)
         // in order to get cloud folder and file IDs - they are stored in $artefacts array.
-        parse_str(urldecode($values['boxfiles']));
-        if (!isset($artefacts) || empty($artefacts)) {
+        parse_str(urldecode($values['boxfiles']), $params);
+        if (!isset($params['artefacts']) || empty($params['artefacts'])) {
             $artefacts = array();
         }
-        
+        else {
+            $artefacts = $params['artefacts'];
+        }
+
         $values = array(
             'title'     => $values['title'],
             'artefacts' => $artefacts,
@@ -206,7 +217,7 @@ class PluginBlocktypeBox extends PluginBlocktypeCloud {
         $elements = array();
         $elements['applicationdesc'] = array(
             'type'  => 'html',
-            'value' => get_string('applicationdesc', 'blocktype.cloud/box', '<a href="https://www.box.com/developers/services" target="_blank">', '</a>'),
+            'value' => get_string('applicationdesc', 'blocktype.cloud/box', '<a href="https://www.box.com/developers/services">', '</a>'),
         );
         $elements['applicationgeneral'] = array(
             'type' => 'fieldset',

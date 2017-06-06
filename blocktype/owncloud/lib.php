@@ -58,6 +58,7 @@ class PluginBlocktypeOwncloud extends PluginBlocktypeCloud {
     }
 
     public static function instance_config_form($instance) {
+        global $USER;
         $instanceid = $instance->get('id');
         $configdata = $instance->get('configdata');
         $allowed = (!empty($configdata['allowed']) ? $configdata['allowed'] : array());
@@ -82,7 +83,7 @@ class PluginBlocktypeOwncloud extends PluginBlocktypeCloud {
                     'type' => 'cancel',
                     'value' => get_string('revokeconnection', 'blocktype.cloud/owncloud') . ' • '
                              . get_config_plugin('blocktype', 'owncloud', 'servicetitle'),
-                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/owncloud/account.php?action=logout',
+                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/owncloud/account.php?action=logout&sesskey=' . $USER->get('sesskey'),
                 ),
                 'owncloudfiles' => array(
                     'type'     => 'datatables',
@@ -109,7 +110,7 @@ class PluginBlocktypeOwncloud extends PluginBlocktypeCloud {
                 'owncloudisconnect' => array(
                     'type' => 'cancel',
                     'value' => get_string('connecttoowncloud', 'blocktype.cloud/owncloud'),
-                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/owncloud/account.php?action=login&view=' . $viewid,
+                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/owncloud/account.php?action=login&view=' . $viewid . '&sesskey=' . $USER->get('sesskey'),
                 ),
             );
         }
@@ -119,11 +120,14 @@ class PluginBlocktypeOwncloud extends PluginBlocktypeCloud {
         // Folder and file IDs (and other values) are returned as JSON/jQuery serialized string.
         // We have to parse that string and urldecode it (to correctly convert square brackets)
         // in order to get cloud folder and file IDs - they are stored in $artefacts array.
-        parse_str(urldecode($values['owncloudfiles']));
-        if (!isset($artefacts) || empty($artefacts)) {
+        parse_str(urldecode($values['owncloudfiles']), $params);
+        if (!isset($params['artefacts']) || empty($params['artefacts'])) {
             $artefacts = array();
         }
-        
+        else {
+            $artefacts = $params['artefacts'];
+        }
+
         $values = array(
             'title'     => $values['title'],
             'artefacts' => $artefacts,

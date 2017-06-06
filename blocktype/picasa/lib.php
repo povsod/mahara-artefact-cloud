@@ -37,7 +37,11 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
         $ownerid = $view->get('owner');
 
         $selected = (!empty($configdata['artefacts']) ? $configdata['artefacts'] : array());
-        $display  = (!empty($configdata['display']) ? $configdata['display'] : 'list');
+        $display  = (
+            !empty($configdata['display']) && $configdata['display'] === 'embed'
+            ? 'embed'
+            : 'list'
+        );
         $size     = (!empty($configdata['size']) ? $configdata['size'] : '512');
         $frame     = (!empty($configdata['frame']) ? $configdata['frame'] : false);
         $slideshow = (!empty($configdata['slideshow']) ? $configdata['slideshow'] : false);
@@ -68,7 +72,6 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
                 $smarty->assign('embed', $html);
                 break;
             case 'list':
-            default:
                 if (!empty($selected)) {
                     list($type, $item) = explode('-', $selected[0]);
                     if ($type == 'file') {
@@ -85,6 +88,10 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
                 $data = self::get_filelist($folder, $selected, $ownerid);
                 $smarty->assign('folders', $data['folders']);
                 $smarty->assign('files', $data['files']);
+                break;
+            default:
+                log_warn('Invalid display method: {$display}');
+                return false;
         }
         $smarty->assign('viewid', $viewid);
         $smarty->assign('SERVICE', 'picasa');
@@ -96,6 +103,7 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
     }
 
     public static function instance_config_form($instance) {
+        global $USER;
         $instanceid = $instance->get('id');
         $configdata = $instance->get('configdata');
         $allowed = (!empty($configdata['allowed']) ? $configdata['allowed'] : array());
@@ -116,7 +124,7 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
                 'picasaisconnect' => array(
                     'type' => 'cancel',
                     'value' => get_string('revokeconnection', 'blocktype.cloud/picasa'),
-                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/picasa/account.php?action=logout',
+                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/picasa/account.php?action=logout&sesskey=' . $USER->get('sesskey'),
                 ),
                 'picasafiles' => array(
                     'type'     => 'datatables',
@@ -189,7 +197,7 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
                 'picasaisconnect' => array(
                     'type' => 'cancel',
                     'value' => get_string('connecttopicasa', 'blocktype.cloud/picasa'),
-                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/pcasa/account.php?action=login&view=' . $viewid,
+                    'goto' => get_config('wwwroot') . 'artefact/cloud/blocktype/pcasa/account.php?action=login&view=' . $viewid . '&sesskey=' . $USER->get('sesskey'),
                 ),
             );
         }
@@ -199,11 +207,14 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
         // Folder and file IDs (and other values) are returned as JSON/jQuery serialized string.
         // We have to parse that string and urldecode it (to correctly convert square brackets)
         // in order to get cloud folder and file IDs - they are stored in $artefacts array.
-        parse_str(urldecode($values['picasafiles']));
-        if (!isset($artefacts) || empty($artefacts)) {
+        parse_str(urldecode($values['picasafiles']), $params);
+        if (!isset($params['artefacts']) || empty($params['artefacts'])) {
             $artefacts = array();
         }
-        
+        else {
+            $artefacts = $params['artefacts'];
+        }
+
         $values = array(
             'title'     => $values['title'],
             'artefacts' => $artefacts,
@@ -234,7 +245,7 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
         $elements = array();
         $elements['applicationdesc'] = array(
             'type'  => 'html',
-            'value' => get_string('applicationdesc', 'blocktype.cloud/picasa', '<a href="https://console.cloud.google.com/apis/credentials" target="_blank">', '</a>'),
+            'value' => get_string('applicationdesc', 'blocktype.cloud/picasa', '<a href="https://console.cloud.google.com/apis/credentials">', '</a>'),
         );
         $elements['webappsclientid'] = array(
             'type' => 'fieldset',
@@ -1247,7 +1258,7 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
             else {
                 $slimbox2attr = null;
             }
-            $html .= '<a rel="' . $slimbox2attr . '" href="' . $previewurl . '" title="' . $photoinfo['name'] . '" target="_blank">';
+            $html .= '<a rel="' . $slimbox2attr . '" href="' . $previewurl . '" title="' . $photoinfo['name'] . '">';
             $html .= '<img src="' . $photourl . '" alt="' . $photoinfo['name'] . '" title="' . $photoinfo['name'] . '"';
             if ($options['frame']) {
                 $html .= ' class="frame">';

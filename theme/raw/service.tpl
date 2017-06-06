@@ -73,14 +73,14 @@
                 <span class="icon icon-wrench left icon-lg"></span>
                 {str tag=manage section=artefact.cloud}
             </a>
-            <a href="{$WWWROOT}artefact/cloud/blocktype/{$service->name}/account.php?action=logout" class="btn">
+            <a href="{$WWWROOT}artefact/cloud/blocktype/{$service->name}/account.php?action=logout&sesskey={$SESSKEY}" class="btn">
                 <span class="icon icon-lock left icon-lg text-danger"></span>
                 {str tag=accessrevoke section=artefact.cloud}
             </a>
         </div>
         {else}
         <div class="panel-footer">
-            <a href="{$WWWROOT}artefact/cloud/blocktype/{$service->name}/account.php?action=login" class="btn">
+            <a href="{$WWWROOT}artefact/cloud/blocktype/{$service->name}/account.php?action=login&sesskey={$SESSKEY}" class="btn">
                 <span class="icon icon-unlock-alt left icon-lg"></span>
                 {str tag=accessgrant section=artefact.cloud}
             </a>
