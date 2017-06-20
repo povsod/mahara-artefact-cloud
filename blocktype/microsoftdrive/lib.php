@@ -5,7 +5,7 @@
  * @subpackage blocktype-microsoftdrive
  * @author     Gregor Anzelj
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2012-2016 Gregor Anzelj, info@povsod.com
+ * @copyright  (C) 2012-2017 Gregor Anzelj, info@povsod.com
  *
  */
 
@@ -184,6 +184,11 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
             'type'  => 'html',
             'value' => get_string('applicationdesc', 'blocktype.cloud/microsoftdrive', '<a href="https://account.live.com/developers/applications">', '</a>'),
         );
+        $elements['applicationdesc2'] = array(
+            'type'  => 'html',
+            'class' => 'bg-danger text-danger',
+            'value' => '<div style="padding:0 10px">' . get_string('applicationdesc2', 'blocktype.cloud/microsoftdrive') . '</div>',
+        );
         $elements['basicinformation'] = array(
             'type' => 'fieldset',
             'class' => 'first',
@@ -308,7 +313,7 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
         }
         else {
             $service->pending = true;
-            $SESSION->add_error_msg('Can\'t find Live consumer key and/or consumer secret.');
+            $SESSION->add_error_msg('Can\'t find Microsoft Live consumer key and/or consumer secret.');
         }
         return $service;
     }
@@ -332,7 +337,7 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
             redirect($request_url);
         }
         else {
-            $SESSION->add_error_msg('Can\'t find Live consumer key and/or consumer secret.');
+            $SESSION->add_error_msg('Can\'t find Microsoft Live consumer key and/or consumer secret.');
         }
     }
 
@@ -381,7 +386,7 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
             }
         }
         else {
-            $SESSION->add_error_msg('Can\'t find Live consumer key and/or consumer secret.');
+            $SESSION->add_error_msg('Can\'t find Microsoft Live consumer key and/or consumer secret.');
         }
     }
 
@@ -448,7 +453,7 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
             }
         }
         else {
-            $SESSION->add_error_msg('Can\'t find Live consumer key and/or consumer secret.');
+            $SESSION->add_error_msg('Can\'t find Microsoft Live consumer key and/or consumer secret.');
         }
     }
 
@@ -472,7 +477,7 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
             redirect($request_url);
         }
         else {
-            $SESSION->add_error_msg('Can\'t find Live consumer key and/or consumer secret.');
+            $SESSION->add_error_msg('Can\'t find Microsoft Live consumer key and/or consumer secret.');
         }
     }
     
@@ -543,7 +548,7 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
             }
         }
         else {
-            $SESSION->add_error_msg('Can\'t find Live consumer key and/or consumer secret.');
+            $SESSION->add_error_msg('Can\'t find Microsoft Live consumer key and/or consumer secret.');
         }
     }
     
@@ -627,7 +632,7 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
             }
         }
         else {
-            $SESSION->add_error_msg('Can\'t find Live consumer key and/or consumer secret.');
+            $SESSION->add_error_msg('Can\'t find Microsoft Live consumer key and/or consumer secret.');
         }
     }
 
@@ -715,7 +720,6 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
                     foreach($data['data'] as $artefact) {
                         $id           = $artefact['id'];
                         $type         = ($artefact['type'] == 'folder' ? 'folder' : 'file');
-                        // Get artefactname by removing parent path from beginning...
                         $artefactname = $artefact['name'];
                         if ($artefact['type'] == 'folder') {
                             $icon  = '<span class="icon-folder-open icon icon-lg"></span>';
@@ -756,7 +760,7 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
             }
         }
         else {
-            $SESSION->add_error_msg('Can\'t find Live consumer key and/or consumer secret.');
+            $SESSION->add_error_msg('Can\'t find Microsoft Live consumer key and/or consumer secret.');
         }
     }
 
@@ -802,7 +806,7 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
             }
         }
         else {
-            $SESSION->add_error_msg('Can\'t find Live consumer key and/or consumer secret.');
+            $SESSION->add_error_msg('Can\'t find Microsoft Live consumer key and/or consumer secret.');
         }
     }
 
@@ -848,7 +852,7 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
             }
         }
         else {
-            $SESSION->add_error_msg('Can\'t find Live consumer key and/or consumer secret.');
+            $SESSION->add_error_msg('Can\'t find Microsoft Live consumer key and/or consumer secret.');
         }
     }
 
@@ -882,7 +886,7 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
             return $result;
         }
         else {
-            $SESSION->add_error_msg('Can\'t find Live consumer key and/or consumer secret.');
+            $SESSION->add_error_msg('Can\'t find Microsoft Live consumer key and/or consumer secret.');
         }
     }
 
@@ -920,7 +924,7 @@ class PluginBlocktypeMicrosoftdrive extends PluginBlocktypeCloud {
             }
         }
         else {
-            $SESSION->add_error_msg('Can\'t find Live consumer key and/or consumer secret.');
+            $SESSION->add_error_msg('Can\'t find Microsoft Live consumer key and/or consumer secret.');
         }
     }
 
