@@ -41,7 +41,7 @@ for an API key on each service.
 
 ## License and copyright
 
-Copyright (C) 2012-2016 Gregor Anzelj, and others including:
+Copyright (C) 2012-2017 Gregor Anzelj, and others including:
 * Aaron Wells at Catalyst IT
 
 This program is free software: you can redistribute it and/or modify

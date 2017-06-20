@@ -5,7 +5,7 @@
  * @subpackage blocktype-microsoftdrive
  * @author     Gregor Anzelj
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2012-2016 Gregor Anzelj, info@povsod.com
+ * @copyright  (C) 2012-2017 Gregor Anzelj, info@povsod.com
  *
  */
 
@@ -19,6 +19,7 @@ $string['servicename'] = 'Microsoft OneDrive';
 
 $string['basicinformation'] = 'Basic Information';
 $string['applicationdesc'] = 'You must create %san application%s, if you wish to access and use OneDrive API. When you will create the application, the <code>Client ID</code> and <code>Client secret</code> will be generated. Copy and paste them here. Then copy <code>Redirect URL</code> and paste it into application settings. Save application settings and this plugin settings.';
+$string['applicationdesc2'] = 'You have to create your application in <b>Live SDK applications</b> section.';
 $string['applicationname'] = 'Application name';
 $string['applicationnamedesc'] = 'You must provide unique application name, e.g. the name of this site.';
 $string['applicationicon'] = 'Application logo';

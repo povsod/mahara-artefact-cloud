@@ -5,7 +5,7 @@
  * @subpackage blocktype-owncloud
  * @author     Gregor Anzelj
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2014 Gregor Anzelj, gregor.anzelj@gmail.com
+ * @copyright  (C) 2012-2017 Gregor Anzelj, info@povsod.com
  *
  */
 

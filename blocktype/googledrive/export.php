@@ -5,7 +5,7 @@
  * @subpackage blocktype-googledrive
  * @author     Gregor Anzelj
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2012-2016 Gregor Anzelj, info@povsod.com
+ * @copyright  (C) 2012-2017 Gregor Anzelj, info@povsod.com
  *
  */
 
