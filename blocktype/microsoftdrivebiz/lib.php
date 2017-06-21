@@ -203,14 +203,14 @@ class PluginBlocktypeMicrosoftdrivebiz extends PluginBlocktypeCloud {
                 'consumerkey' => array(
                     'type'         => 'text',
                     'title'        => get_string('consumerkey', 'blocktype.cloud/microsoftdrivebiz'),
-                    'defaultvalue' => get_config_plugin('blocktype', 'microsoftdrive', 'consumerkey'),
+                    'defaultvalue' => get_config_plugin('blocktype', 'microsoftdrivebiz', 'consumerkey'),
                     'description'  => get_string('consumerkeydesc', 'blocktype.cloud/microsoftdrivebiz'),
                     'rules'        => array('required' => true),
                 ),
                 'consumersecret' => array(
                     'type'         => 'text',
                     'title'        => get_string('consumersecret', 'blocktype.cloud/microsoftdrivebiz'),
-                    'defaultvalue' => get_config_plugin('blocktype', 'microsoftdrive', 'consumersecret'),
+                    'defaultvalue' => get_config_plugin('blocktype', 'microsoftdrivebiz', 'consumersecret'),
                     'description'  => get_string('consumersecretdesc', 'blocktype.cloud/microsoftdrivebiz'),
                     'rules'        => array('required' => true),
                 ),
