@@ -29,7 +29,7 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
         return array('external');
     }
 
-    public static function render_instance(BlockInstance $instance, $editing=false) {
+    public static function render_instance(BlockInstance $instance, $editing=false, $versioning=false) {
         $configdata = $instance->get('configdata');
         $viewid     = $instance->get('view');
         
@@ -102,7 +102,7 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
         return true;
     }
 
-    public static function instance_config_form($instance) {
+    public static function instance_config_form(BlockInstance $instance) {
         global $USER;
         $instanceid = $instance->get('id');
         $configdata = $instance->get('configdata');
@@ -328,7 +328,7 @@ class PluginBlocktypePicasa extends PluginBlocktypeCloud {
 
     }
 
-    public static function save_config_options($form, $values) {
+    public static function save_config_options(Pieform $form, $values) {
         set_config_plugin('blocktype', 'picasa', 'consumerkey', $values['consumerkey']);
         set_config_plugin('blocktype', 'picasa', 'consumersecret', $values['consumersecret']);
     }
